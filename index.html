@@ -1,18 +1,29 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
+
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
     <title>ラジオお便り表示</title>
 
+
     <style>
+
         * {
             box-sizing: border-box;
         }
 
+
         body {
+
             margin: 0;
+
             width: 100vw;
             height: 100vh;
 
@@ -23,30 +34,37 @@
                 sans-serif;
 
             background: #111827;
+
             color: white;
 
             overflow: hidden;
         }
 
-        /* =========================
-           お便り表示エリア
-           ========================= */
+
+        /* =========================================
+           お便り表示
+           ========================================= */
 
         .screen {
+
             width: 100%;
             height: 100%;
 
             display: flex;
+
             align-items: center;
             justify-content: center;
 
             padding: 40px;
         }
 
+
         .letter {
+
             width: min(1100px, 90vw);
 
             background: rgba(255, 255, 255, 0.96);
+
             color: #222;
 
             border-radius: 30px;
@@ -58,38 +76,61 @@
 
             display: none;
 
-            animation: showLetter 0.35s ease;
+            animation:
+                showLetter 0.35s ease;
         }
 
+
         .letter.show {
+
             display: block;
         }
 
+
         @keyframes showLetter {
+
             from {
+
                 opacity: 0;
-                transform: scale(0.96) translateY(10px);
+
+                transform:
+                    scale(0.96)
+                    translateY(10px);
             }
 
             to {
+
                 opacity: 1;
-                transform: scale(1) translateY(0);
+
+                transform:
+                    scale(1)
+                    translateY(0);
             }
         }
 
-        /* =========================
-           アイコン
-           ========================= */
+
+        /* =========================================
+           ヘッダー
+           ========================================= */
 
         .header {
+
             display: flex;
+
             align-items: center;
+
             gap: 25px;
 
             margin-bottom: 30px;
         }
 
+
+        /* =========================================
+           アイコン
+           ========================================= */
+
         .icon {
+
             width: 90px;
             height: 90px;
 
@@ -102,48 +143,66 @@
             flex-shrink: 0;
         }
 
+
+        /* =========================================
+           名前
+           ========================================= */
+
         .name {
+
             font-size: 30px;
+
             font-weight: bold;
         }
 
+
         .label {
+
             font-size: 15px;
+
             color: #888;
 
             margin-bottom: 5px;
         }
 
-        /* =========================
+
+        /* =========================================
            コメント
-           ========================= */
+           ========================================= */
 
         .comment {
+
             font-size: 32px;
 
             line-height: 1.7;
 
             white-space: pre-wrap;
+
             word-break: break-word;
         }
 
-        /* =========================
-           読み込み前・終了表示
-           ========================= */
+
+        /* =========================================
+           初期メッセージ
+           ========================================= */
 
         .message {
+
             text-align: center;
 
-            color: rgba(255, 255, 255, 0.85);
+            color:
+                rgba(255, 255, 255, 0.85);
 
             font-size: 28px;
         }
 
-        /* =========================
+
+        /* =========================================
            操作パネル
-           ========================= */
+           ========================================= */
 
         .control-panel {
+
             position: fixed;
 
             left: 20px;
@@ -153,30 +212,41 @@
 
             padding: 20px;
 
-            background: rgba(0, 0, 0, 0.85);
+            background:
+                rgba(0, 0, 0, 0.85);
 
             border-radius: 15px;
 
             box-shadow:
-                0 10px 30px rgba(0, 0, 0, 0.4);
+                0 10px 30px
+                rgba(0, 0, 0, 0.4);
 
             z-index: 1000;
 
-            transition: opacity 0.2s;
+            transition:
+                opacity 0.2s;
         }
 
+
         .control-panel.hidden {
+
             opacity: 0;
+
             pointer-events: none;
         }
 
+
         .control-panel h2 {
-            margin: 0 0 15px 0;
+
+            margin:
+                0 0 15px 0;
 
             font-size: 20px;
         }
 
+
         .control-panel label {
+
             display: block;
 
             margin-bottom: 6px;
@@ -184,7 +254,9 @@
             font-size: 14px;
         }
 
+
         .control-panel input {
+
             width: 100%;
 
             padding: 10px 12px;
@@ -192,37 +264,77 @@
             margin-bottom: 12px;
 
             border: none;
+
             border-radius: 8px;
 
             font-size: 16px;
         }
 
+
+        /* =========================================
+           ボタン
+           ========================================= */
+
         button {
+
             width: 100%;
 
             padding: 12px;
 
             border: none;
+
             border-radius: 8px;
 
             background: #2563eb;
+
             color: white;
 
             font-size: 16px;
+
             font-weight: bold;
 
             cursor: pointer;
         }
 
+
         button:hover {
+
             background: #1d4ed8;
         }
 
+
         button + button {
+
             margin-top: 8px;
         }
 
+
+        /* =========================================
+           前へ・次へ
+           ========================================= */
+
+        .navigation {
+
+            display: flex;
+
+            gap: 8px;
+
+            margin-top: 8px;
+        }
+
+
+        .navigation button {
+
+            width: 50%;
+        }
+
+
+        /* =========================================
+           ステータス
+           ========================================= */
+
         .status {
+
             margin-top: 12px;
 
             font-size: 13px;
@@ -232,7 +344,13 @@
             min-height: 20px;
         }
 
+
+        /* =========================================
+           操作説明
+           ========================================= */
+
         .hint {
+
             margin-top: 12px;
 
             font-size: 12px;
@@ -242,32 +360,48 @@
             line-height: 1.6;
         }
 
-        /* =========================
-           配信モード
-           ========================= */
-
-        body.streaming .control-panel {
-            opacity: 0;
-            pointer-events: none;
-        }
     </style>
+
 </head>
+
 
 <body>
 
-    <!-- =========================
-         お便り表示
-         ========================= -->
+
+    <!-- =========================================
+         お便り表示画面
+         ========================================= -->
 
     <div class="screen">
 
-        <div id="message" class="message">
-            シート番号を入力して「お便りを読み込む」を押してください
+
+        <!-- 読み込み前のメッセージ -->
+
+        <div
+            id="message"
+            class="message"
+        >
+
+            シート番号を入力して
+            「お便りを読み込む」を押してください
+
         </div>
 
-        <div id="letter" class="letter">
+
+        <!-- お便り -->
+
+        <div
+            id="letter"
+            class="letter"
+        >
+
+
+            <!-- 名前 -->
 
             <div class="header">
+
+
+                <!-- アイコン -->
 
                 <img
                     id="icon"
@@ -276,36 +410,61 @@
                     alt="アイコン"
                 >
 
+
                 <div>
+
                     <div class="label">
                         ラジオネーム
                     </div>
 
-                    <div id="name" class="name">
+
+                    <div
+                        id="name"
+                        class="name"
+                    >
                     </div>
+
                 </div>
 
             </div>
 
-            <div id="comment" class="comment">
+
+            <!-- コメント -->
+
+            <div
+                id="comment"
+                class="comment"
+            >
             </div>
+
 
         </div>
 
     </div>
 
 
-    <!-- =========================
+
+    <!-- =========================================
          操作パネル
-         ========================= -->
+         ========================================= -->
 
-    <div id="controlPanel" class="control-panel">
+    <div
+        id="controlPanel"
+        class="control-panel"
+    >
 
-        <h2>ラジオお便り操作</h2>
+
+        <h2>
+            ラジオお便り操作
+        </h2>
+
+
+        <!-- シート番号 -->
 
         <label for="gid">
             シート番号（gid）
         </label>
+
 
         <input
             id="gid"
@@ -314,149 +473,242 @@
             value="0"
         >
 
+
+        <!-- 読み込み -->
+
         <button id="loadButton">
+
             お便りを読み込む
+
         </button>
 
-        <button id="nextButton">
-            次のお便り
-        </button>
 
-        <div id="status" class="status">
+        <!-- 前へ・次へ -->
+
+        <div class="navigation">
+
+
+            <button id="previousButton">
+
+                ← 前のお便り
+
+            </button>
+
+
+            <button id="nextButton">
+
+                次のお便り →
+
+            </button>
+
+
         </div>
+
+
+        <!-- ステータス -->
+
+        <div
+            id="status"
+            class="status"
+        >
+        </div>
+
+
+        <!-- 操作説明 -->
 
         <div class="hint">
+
             Space：次のお便り<br>
+
+            ←：前のお便り<br>
+
+            →：次のお便り<br>
+
             H：操作パネル表示 / 非表示
+
         </div>
+
 
     </div>
 
 
+
     <script>
+
 
         /* =====================================================
            Google Sheets設定
            ===================================================== */
 
-        // ★ここだけ固定URL
+
+        /*
+         * ★ Google SheetsのURLは固定
+         */
+
         const SHEET_URL =
-            "https://docs.google.com/spreadsheets/d/1oDB_-kaK9ltjHbQ1zHvB-Q8bYZoEzbnSMkKZgUo5H4o/edit?usp=sharing";
+            "https://docs.google.com/spreadsheets/d/1oDB_-kaK9ltjHbQ1zHvB-Q8bYZoEzbnSMkKZgUo5H4o/edit";
+
 
 
         /* =====================================================
-           アイコン設定
-           
-           GitHub Pagesの
-           
-           icons/icon1.png
-           icons/icon2.png
-           icons/icon3.png
-           icons/icon4.png
-           icons/icon5.png
-           
-           を使用します。
+           アイコン
            ===================================================== */
-
-        const ICONS = [
-            "icons/icon1.png",
-            "icons/icon2.png",
-            "icons/icon3.png",
-            "icons/icon4.png",
-            "icons/icon5.png"
-        ];
 
 
         /*
-         * アイコンが存在しなかった場合の代替
+         * GitHubリポジトリ内に
+         *
+         * icons/icon1.png
+         * icons/icon2.png
+         * icons/icon3.png
+         * icons/icon4.png
+         * icons/icon5.png
+         *
+         * を用意してください。
          */
-        const FALLBACK_ICONS = [
-            "😀",
-            "😎",
-            "🐱",
-            "🐶",
-            "🐰"
+
+        const ICONS = [
+
+            "icons/icon1.png",
+
+            "icons/icon2.png",
+
+            "icons/icon3.png",
+
+            "icons/icon4.png",
+
+            "icons/icon5.png"
+
         ];
 
 
+
         /* =====================================================
-           データ
+           お便りデータ
            ===================================================== */
+
 
         let letters = [];
 
+
+        /*
+         * 現在表示しているお便り
+         *
+         * -1 = まだ表示していない
+         */
+
         let currentIndex = -1;
 
-        let readIndexes = [];
 
 
         /* =====================================================
-           HTML要素
+           HTML要素取得
            ===================================================== */
+
 
         const gidInput =
-            document.getElementById("gid");
+            document.getElementById(
+                "gid"
+            );
+
 
         const loadButton =
-            document.getElementById("loadButton");
+            document.getElementById(
+                "loadButton"
+            );
+
+
+        const previousButton =
+            document.getElementById(
+                "previousButton"
+            );
+
 
         const nextButton =
-            document.getElementById("nextButton");
+            document.getElementById(
+                "nextButton"
+            );
+
 
         const status =
-            document.getElementById("status");
+            document.getElementById(
+                "status"
+            );
+
 
         const message =
-            document.getElementById("message");
+            document.getElementById(
+                "message"
+            );
+
 
         const letter =
-            document.getElementById("letter");
+            document.getElementById(
+                "letter"
+            );
+
 
         const nameElement =
-            document.getElementById("name");
+            document.getElementById(
+                "name"
+            );
+
 
         const commentElement =
-            document.getElementById("comment");
+            document.getElementById(
+                "comment"
+            );
+
 
         const iconElement =
-            document.getElementById("icon");
+            document.getElementById(
+                "icon"
+            );
+
 
         const controlPanel =
-            document.getElementById("controlPanel");
+            document.getElementById(
+                "controlPanel"
+            );
+
 
 
         /* =====================================================
-           Google Sheets URLからSpreadsheet IDを取得
+           Google Sheets ID取得
            ===================================================== */
+
 
         function getSpreadsheetId(url) {
 
+
             const match =
-                url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+                url.match(
+                    /\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/
+                );
+
 
             if (!match) {
+
                 throw new Error(
                     "Google Sheets URLが正しくありません"
                 );
+
             }
 
+
             return match[1];
+
         }
 
 
+
         /* =====================================================
-           CSVパーサー
-           
-           コメントに
-           
-           ・カンマ
-           ・改行
-           ・"
-           
-           が入っていても処理できるようにしています。
+           CSV解析
            ===================================================== */
 
+
         function parseCSV(text) {
+
 
             const rows = [];
 
@@ -467,56 +719,102 @@
             let insideQuotes = false;
 
 
-            for (let i = 0; i < text.length; i++) {
+            for (
+                let i = 0;
+                i < text.length;
+                i++
+            ) {
 
-                const char = text[i];
 
-                const next = text[i + 1];
+                const char =
+                    text[i];
 
 
-                // ダブルクォート
+                const next =
+                    text[i + 1];
+
+
+
+                /*
+                 * ダブルクォート
+                 */
+
                 if (char === '"') {
 
-                    if (insideQuotes && next === '"') {
+
+                    /*
+                     * "" → "
+                     */
+
+                    if (
+                        insideQuotes &&
+                        next === '"'
+                    ) {
 
                         value += '"';
 
                         i++;
 
-                    } else {
+                    }
+                    else {
 
-                        insideQuotes = !insideQuotes;
+                        insideQuotes =
+                            !insideQuotes;
 
                     }
 
+
                     continue;
+
                 }
 
 
-                // カンマ
-                if (char === "," && !insideQuotes) {
+
+                /*
+                 * カンマ
+                 */
+
+                if (
+                    char === "," &&
+                    !insideQuotes
+                ) {
 
                     row.push(value);
 
                     value = "";
 
                     continue;
+
                 }
 
 
-                // 改行
+
+                /*
+                 * 改行
+                 */
+
                 if (
-                    (char === "\n" || char === "\r") &&
+                    (
+                        char === "\n" ||
+                        char === "\r"
+                    ) &&
                     !insideQuotes
                 ) {
 
-                    // CRLFの場合
+
+                    /*
+                     * WindowsのCRLF
+                     */
+
                     if (
                         char === "\r" &&
                         next === "\n"
                     ) {
+
                         i++;
+
                     }
+
 
                     row.push(value);
 
@@ -527,35 +825,54 @@
                     value = "";
 
                     continue;
+
                 }
 
 
                 value += char;
+
             }
 
 
-            // 最後の行
-            if (value !== "" || row.length > 0) {
+
+            /*
+             * 最後の行
+             */
+
+            if (
+                value !== "" ||
+                row.length > 0
+            ) {
 
                 row.push(value);
 
                 rows.push(row);
+
             }
 
 
             return rows;
+
         }
+
 
 
         /* =====================================================
            Google Sheets読み込み
            ===================================================== */
 
+
         async function loadSheet() {
+
 
             const gid =
                 gidInput.value.trim();
 
+
+
+            /*
+             * gidチェック
+             */
 
             if (!gid) {
 
@@ -563,31 +880,48 @@
                     "シート番号を入力してください";
 
                 return;
+
             }
 
 
+
             try {
+
 
                 status.textContent =
                     "読み込み中...";
 
 
+
+                /*
+                 * Spreadsheet ID
+                 */
+
                 const spreadsheetId =
-                    getSpreadsheetId(SHEET_URL);
+                    getSpreadsheetId(
+                        SHEET_URL
+                    );
+
 
 
                 /*
                  * Google Visualization API
                  *
-                 * gidを指定してCSVとして取得
+                 * gidで対象シートを指定
                  */
 
                 const csvUrl =
                     `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&gid=${encodeURIComponent(gid)}`;
 
 
+
+                /*
+                 * データ取得
+                 */
+
                 const response =
                     await fetch(csvUrl);
+
 
 
                 if (!response.ok) {
@@ -595,46 +929,85 @@
                     throw new Error(
                         "Google Sheetsを読み込めませんでした"
                     );
+
                 }
+
 
 
                 const csv =
                     await response.text();
 
 
+
+                /*
+                 * CSVを配列に変換
+                 */
+
                 const rows =
                     parseCSV(csv);
 
 
-                /* =============================
-                   A列・B列を取得
-                   ============================= */
+
+                /*
+                 * お便りを初期化
+                 */
 
                 letters = [];
 
 
-                for (let i = 0; i < rows.length; i++) {
 
-                    const row = rows[i];
+                /* =================================================
+                   A列 = 名前
+                   B列 = コメント
+
+                   シートの上から順番に読み込む
+                   ================================================= */
+
+
+                for (
+                    let i = 0;
+                    i < rows.length;
+                    i++
+                ) {
+
+
+                    const row =
+                        rows[i];
 
 
                     const name =
                         row[0]?.trim() || "";
 
+
                     const comment =
                         row[1]?.trim() || "";
 
 
-                    // 空行は無視
+
+                    /*
+                     * 完全な空行は無視
+                     */
+
                     if (
                         name === "" &&
                         comment === ""
                     ) {
+
                         continue;
+
                     }
 
 
-                    // ヘッダー行を自動判定
+
+                    /*
+                     * 1行目がヘッダーの場合
+                     *
+                     * 名前 / コメント
+                     * name / comment
+                     *
+                     * を自動的に除外
+                     */
+
                     if (
                         i === 0 &&
                         (
@@ -646,57 +1019,90 @@
                             comment.toLowerCase() === "comment"
                         )
                     ) {
+
                         continue;
+
                     }
 
 
+
+                    /*
+                     * お便りとして追加
+                     */
+
                     letters.push({
+
                         name: name,
+
                         comment: comment
+
                     });
+
                 }
 
 
-                if (letters.length === 0) {
+
+                /*
+                 * お便りがない場合
+                 */
+
+                if (
+                    letters.length === 0
+                ) {
 
                     throw new Error(
                         "お便りが見つかりませんでした"
                     );
+
                 }
 
 
+
                 /*
-                 * 読み込み状態をリセット
+                 * 現在位置をリセット
                  */
 
                 currentIndex = -1;
 
-                readIndexes = [];
 
 
                 /*
-                 * 表示
+                 * 表示切り替え
                  */
 
-                message.style.display = "none";
+                message.style.display =
+                    "none";
 
-                letter.classList.add("show");
 
+                letter.classList.add(
+                    "show"
+                );
+
+
+
+                /*
+                 * ステータス
+                 */
 
                 status.textContent =
                     `${letters.length}件のお便りを読み込みました`;
 
 
+
                 /*
-                 * 最初のお便りを表示
+                 * 最初のお便り
                  */
 
                 showNextLetter();
 
 
-            } catch (error) {
+            }
+            catch (error) {
 
-                console.error(error);
+
+                console.error(
+                    error
+                );
 
 
                 status.textContent =
@@ -709,129 +1115,222 @@
 
                 message.textContent =
                     "お便りを読み込めませんでした";
+
             }
+
         }
+
 
 
         /* =====================================================
            次のお便り
            ===================================================== */
 
+
         function showNextLetter() {
-
-            if (letters.length === 0) {
-
-                return;
-            }
 
 
             /*
-             * 全件表示済み
+             * データがない
              */
 
             if (
-                readIndexes.length >=
-                letters.length
+                letters.length === 0
             ) {
 
-                nameElement.textContent = "";
-
-                commentElement.textContent =
-                    "すべてのお便りを読みました。";
-
-                iconElement.style.display =
-                    "none";
-
-
-                status.textContent =
-                    "全件終了";
-
                 return;
+
             }
+
 
 
             /*
-             * 未読のお便りからランダムに1件選ぶ
+             * 最後まで来ている
              */
 
-            const unreadIndexes = [];
-
-
-            for (
-                let i = 0;
-                i < letters.length;
-                i++
+            if (
+                currentIndex >=
+                letters.length - 1
             ) {
 
-                if (
-                    !readIndexes.includes(i)
-                ) {
 
-                    unreadIndexes.push(i);
-                }
+                status.textContent =
+                    "これが最後のお便りです";
+
+
+                return;
+
             }
 
 
-            const randomPosition =
-                Math.floor(
-                    Math.random() *
-                    unreadIndexes.length
-                );
 
+            /*
+             * 次へ
+             */
 
-            currentIndex =
-                unreadIndexes[randomPosition];
-
-
-            readIndexes.push(currentIndex);
-
-
-            const current =
-                letters[currentIndex];
+            currentIndex++;
 
 
             /*
              * 表示
              */
 
+            showCurrentLetter();
+
+        }
+
+
+
+        /* =====================================================
+           前のお便り
+           ===================================================== */
+
+
+        function showPreviousLetter() {
+
+
+            /*
+             * データがない
+             */
+
+            if (
+                letters.length === 0
+            ) {
+
+                return;
+
+            }
+
+
+
+            /*
+             * 最初のお便り
+             */
+
+            if (
+                currentIndex <= 0
+            ) {
+
+
+                status.textContent =
+                    "これが最初のお便りです";
+
+
+                return;
+
+            }
+
+
+
+            /*
+             * 前へ
+             */
+
+            currentIndex--;
+
+
+            /*
+             * 表示
+             */
+
+            showCurrentLetter();
+
+        }
+
+
+
+        /* =====================================================
+           現在のお便りを表示
+           ===================================================== */
+
+
+        function showCurrentLetter() {
+
+
+            /*
+             * 現在のお便り
+             */
+
+            const current =
+                letters[currentIndex];
+
+
+
+            /*
+             * 名前
+             */
+
             nameElement.textContent =
                 current.name;
+
+
+
+            /*
+             * コメント
+             */
 
             commentElement.textContent =
                 current.comment;
 
 
+
             /*
-             * アイコンをランダム選択
+             * アイコン
+             *
+             * アイコンだけランダム
              */
 
             setRandomIcon();
 
 
+
             /*
-             * アニメーションを再実行
+             * アニメーション
              */
 
-            letter.classList.remove("show");
+            letter.classList.remove(
+                "show"
+            );
 
 
-            // 強制reflow
+            /*
+             * 強制reflow
+             *
+             * これによって同じアニメーションを
+             * もう一度実行できます。
+             */
+
             void letter.offsetWidth;
 
 
-            letter.classList.add("show");
+            letter.classList.add(
+                "show"
+            );
 
+
+
+            /*
+             * 現在位置
+             */
 
             status.textContent =
-                `${readIndexes.length} / ${letters.length}`;
+                `${currentIndex + 1} / ${letters.length}`;
+
         }
+
 
 
         /* =====================================================
            ランダムアイコン
            ===================================================== */
 
+
         function setRandomIcon() {
+
+
+            /*
+             * 5種類からランダム
+             */
 
             const randomIndex =
                 Math.floor(
@@ -844,6 +1343,12 @@
                 ICONS[randomIndex];
 
 
+
+            /*
+             * アイコン表示
+
+             */
+
             iconElement.style.display =
                 "block";
 
@@ -852,25 +1357,32 @@
                 imagePath;
 
 
+
             /*
-             * 画像が存在しなかった場合
-             * 絵文字に切り替える
+             * 画像が存在しない場合
+             *
+             * アイコン自体を非表示
              */
 
-            iconElement.onerror = function () {
+            iconElement.onerror =
+                function() {
 
-                iconElement.style.display =
-                    "none";
+                    iconElement.style.display =
+                        "none";
 
-                iconElement.onerror =
-                    null;
-            };
+                    iconElement.onerror =
+                        null;
+
+                };
+
         }
+
 
 
         /* =====================================================
            ボタン
            ===================================================== */
+
 
         loadButton.addEventListener(
             "click",
@@ -884,56 +1396,109 @@
         );
 
 
+        previousButton.addEventListener(
+            "click",
+            showPreviousLetter
+        );
+
+
+
         /* =====================================================
            キーボード操作
            ===================================================== */
+
 
         document.addEventListener(
             "keydown",
             function(event) {
 
+
+                /*
+                 * 入力欄を操作中は
+                 * キーボード操作を無効
+                 */
+
+                if (
+                    document.activeElement.tagName ===
+                    "INPUT"
+                ) {
+
+                    return;
+
+                }
+
+
+
                 /*
                  * Space
+                 *
+                 * 次のお便り
                  */
 
                 if (
                     event.code === "Space"
                 ) {
 
-                    /*
-                     * 入力欄にフォーカスしている場合は無視
-                     */
-
-                    if (
-                        document.activeElement.tagName ===
-                        "INPUT"
-                    ) {
-                        return;
-                    }
-
-
                     event.preventDefault();
 
                     showNextLetter();
+
                 }
 
 
+
                 /*
-                 * H
+                 * →キー
                  */
 
                 if (
-                    event.key.toLowerCase() === "h"
+                    event.key === "ArrowRight"
+                ) {
+
+                    showNextLetter();
+
+                }
+
+
+
+                /*
+                 * ←キー
+                 */
+
+                if (
+                    event.key === "ArrowLeft"
+                ) {
+
+                    showPreviousLetter();
+
+                }
+
+
+
+                /*
+                 * Hキー
+                 *
+                 * 操作パネル表示/非表示
+                 */
+
+                if (
+                    event.key.toLowerCase() ===
+                    "h"
                 ) {
 
                     controlPanel.classList.toggle(
                         "hidden"
                     );
+
                 }
+
             }
         );
 
+
     </script>
 
+
 </body>
+
 </html>
