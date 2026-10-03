@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>ラジオお便り表示</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            width: 100vw;
+            height: 100vh;
+
+            font-family:
+                "Noto Sans JP",
+                "Yu Gothic",
+                "Meiryo",
+                sans-serif;
+
+            background: #111827;
+            color: white;
+
+            overflow: hidden;
+        }
+
+        /* =========================
+           お便り表示エリア
+           ========================= */
+
+        .screen {
+            width: 100%;
+            height: 100%;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            padding: 40px;
+        }
+
+        .letter {
+            width: min(1100px, 90vw);
+
+            background: rgba(255, 255, 255, 0.96);
+            color: #222;
+
+            border-radius: 30px;
+
+            padding: 45px 55px;
+
+            box-shadow:
+                0 20px 60px rgba(0, 0, 0, 0.35);
+
+            display: none;
+
+            animation: showLetter 0.35s ease;
+        }
+
+        .letter.show {
+            display: block;
+        }
+
+        @keyframes showLetter {
+            from {
+                opacity: 0;
+                transform: scale(0.96) translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        /* =========================
+           アイコン
+           ========================= */
+
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 25px;
+
+            margin-bottom: 30px;
+        }
+
+        .icon {
+            width: 90px;
+            height: 90px;
+
+            border-radius: 50%;
+
+            object-fit: cover;
+
+            background: #e5e7eb;
+
+            flex-shrink: 0;
+        }
+
+        .name {
+            font-size: 30px;
+            font-weight: bold;
+        }
+
+        .label {
+            font-size: 15px;
+            color: #888;
+
+            margin-bottom: 5px;
+        }
+
+        /* =========================
+           コメント
+           ========================= */
+
+        .comment {
+            font-size: 32px;
+
+            line-height: 1.7;
+
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        /* =========================
+           読み込み前・終了表示
+           ========================= */
+
+        .message {
+            text-align: center;
+
+            color: rgba(255, 255, 255, 0.85);
+
+            font-size: 28px;
+        }
+
+        /* =========================
+           操作パネル
+           ========================= */
+
+        .control-panel {
+            position: fixed;
+
+            left: 20px;
+            bottom: 20px;
+
+            width: 340px;
+
+            padding: 20px;
+
+            background: rgba(0, 0, 0, 0.85);
+
+            border-radius: 15px;
+
+            box-shadow:
+                0 10px 30px rgba(0, 0, 0, 0.4);
+
+            z-index: 1000;
+
+            transition: opacity 0.2s;
+        }
+
+        .control-panel.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .control-panel h2 {
+            margin: 0 0 15px 0;
+
+            font-size: 20px;
+        }
+
+        .control-panel label {
+            display: block;
+
+            margin-bottom: 6px;
+
+            font-size: 14px;
+        }
+
+        .control-panel input {
+            width: 100%;
+
+            padding: 10px 12px;
+
+            margin-bottom: 12px;
+
+            border: none;
+            border-radius: 8px;
+
+            font-size: 16px;
+        }
+
+        button {
+            width: 100%;
+
+            padding: 12px;
+
+            border: none;
+            border-radius: 8px;
+
+            background: #2563eb;
+            color: white;
+
+            font-size: 16px;
+            font-weight: bold;
+
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        button + button {
+            margin-top: 8px;
+        }
+
+        .status {
+            margin-top: 12px;
+
+            font-size: 13px;
+
+            color: #ccc;
+
+            min-height: 20px;
+        }
+
+        .hint {
+            margin-top: 12px;
+
+            font-size: 12px;
+
+            color: #aaa;
+
+            line-height: 1.6;
+        }
+
+        /* =========================
+           配信モード
+           ========================= */
+
+        body.streaming .control-panel {
+            opacity: 0;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- =========================
+         お便り表示
+         ========================= -->
+
+    <div class="screen">
+
+        <div id="message" class="message">
+            シート番号を入力して「お便りを読み込む」を押してください
+        </div>
+
+        <div id="letter" class="letter">
+
+            <div class="header">
+
+                <img
+                    id="icon"
+                    class="icon"
+                    src=""
+                    alt="アイコン"
+                >
+
+                <div>
+                    <div class="label">
+                        ラジオネーム
+                    </div>
+
+                    <div id="name" class="name">
+                    </div>
+                </div>
+
+            </div>
+
+            <div id="comment" class="comment">
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =========================
+         操作パネル
+         ========================= -->
+
+    <div id="controlPanel" class="control-panel">
+
+        <h2>ラジオお便り操作</h2>
+
+        <label for="gid">
+            シート番号（gid）
+        </label>
+
+        <input
+            id="gid"
+            type="text"
+            placeholder="例：0"
+            value="0"
+        >
+
+        <button id="loadButton">
+            お便りを読み込む
+        </button>
+
+        <button id="nextButton">
+            次のお便り
+        </button>
+
+        <div id="status" class="status">
+        </div>
+
+        <div class="hint">
+            Space：次のお便り<br>
+            H：操作パネル表示 / 非表示
+        </div>
+
+    </div>
+
+
+    <script>
+
+        /* =====================================================
+           Google Sheets設定
+           ===================================================== */
+
+        // ★ここだけ固定URL
+        const SHEET_URL =
+            "https://docs.google.com/spreadsheets/d/1oDB_-kaK9ltjHbQ1zHvB-Q8bYZoEzbnSMkKZgUo5H4o/edit";
+
+
+        /* =====================================================
+           アイコン設定
+           
+           GitHub Pagesの
+           
+           icons/icon1.png
+           icons/icon2.png
+           icons/icon3.png
+           icons/icon4.png
+           icons/icon5.png
+           
+           を使用します。
+           ===================================================== */
+
+        const ICONS = [
+            "icons/icon1.png",
+            "icons/icon2.png",
+            "icons/icon3.png",
+            "icons/icon4.png",
+            "icons/icon5.png"
+        ];
+
+
+        /*
+         * アイコンが存在しなかった場合の代替
+         */
+        const FALLBACK_ICONS = [
+            "😀",
+            "😎",
+            "🐱",
+            "🐶",
+            "🐰"
+        ];
+
+
+        /* =====================================================
+           データ
+           ===================================================== */
+
+        let letters = [];
+
+        let currentIndex = -1;
+
+        let readIndexes = [];
+
+
+        /* =====================================================
+           HTML要素
+           ===================================================== */
+
+        const gidInput =
+            document.getElementById("gid");
+
+        const loadButton =
+            document.getElementById("loadButton");
+
+        const nextButton =
+            document.getElementById("nextButton");
+
+        const status =
+            document.getElementById("status");
+
+        const message =
+            document.getElementById("message");
+
+        const letter =
+            document.getElementById("letter");
+
+        const nameElement =
+            document.getElementById("name");
+
+        const commentElement =
+            document.getElementById("comment");
+
+        const iconElement =
+            document.getElementById("icon");
+
+        const controlPanel =
+            document.getElementById("controlPanel");
+
+
+        /* =====================================================
+           Google Sheets URLからSpreadsheet IDを取得
+           ===================================================== */
+
+        function getSpreadsheetId(url) {
+
+            const match =
+                url.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+
+            if (!match) {
+                throw new Error(
+                    "Google Sheets URLが正しくありません"
+                );
+            }
+
+            return match[1];
+        }
+
+
+        /* =====================================================
+           CSVパーサー
+           
+           コメントに
+           
+           ・カンマ
+           ・改行
+           ・"
+           
+           が入っていても処理できるようにしています。
+           ===================================================== */
+
+        function parseCSV(text) {
+
+            const rows = [];
+
+            let row = [];
+
+            let value = "";
+
+            let insideQuotes = false;
+
+
+            for (let i = 0; i < text.length; i++) {
+
+                const char = text[i];
+
+                const next = text[i + 1];
+
+
+                // ダブルクォート
+                if (char === '"') {
+
+                    if (insideQuotes && next === '"') {
+
+                        value += '"';
+
+                        i++;
+
+                    } else {
+
+                        insideQuotes = !insideQuotes;
+
+                    }
+
+                    continue;
+                }
+
+
+                // カンマ
+                if (char === "," && !insideQuotes) {
+
+                    row.push(value);
+
+                    value = "";
+
+                    continue;
+                }
+
+
+                // 改行
+                if (
+                    (char === "\n" || char === "\r") &&
+                    !insideQuotes
+                ) {
+
+                    // CRLFの場合
+                    if (
+                        char === "\r" &&
+                        next === "\n"
+                    ) {
+                        i++;
+                    }
+
+                    row.push(value);
+
+                    rows.push(row);
+
+                    row = [];
+
+                    value = "";
+
+                    continue;
+                }
+
+
+                value += char;
+            }
+
+
+            // 最後の行
+            if (value !== "" || row.length > 0) {
+
+                row.push(value);
+
+                rows.push(row);
+            }
+
+
+            return rows;
+        }
+
+
+        /* =====================================================
+           Google Sheets読み込み
+           ===================================================== */
+
+        async function loadSheet() {
+
+            const gid =
+                gidInput.value.trim();
+
+
+            if (!gid) {
+
+                status.textContent =
+                    "シート番号を入力してください";
+
+                return;
+            }
+
+
+            try {
+
+                status.textContent =
+                    "読み込み中...";
+
+
+                const spreadsheetId =
+                    getSpreadsheetId(SHEET_URL);
+
+
+                /*
+                 * Google Visualization API
+                 *
+                 * gidを指定してCSVとして取得
+                 */
+
+                const csvUrl =
+                    `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&gid=${encodeURIComponent(gid)}`;
+
+
+                const response =
+                    await fetch(csvUrl);
+
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        "Google Sheetsを読み込めませんでした"
+                    );
+                }
+
+
+                const csv =
+                    await response.text();
+
+
+                const rows =
+                    parseCSV(csv);
+
+
+                /* =============================
+                   A列・B列を取得
+                   ============================= */
+
+                letters = [];
+
+
+                for (let i = 0; i < rows.length; i++) {
+
+                    const row = rows[i];
+
+
+                    const name =
+                        row[0]?.trim() || "";
+
+                    const comment =
+                        row[1]?.trim() || "";
+
+
+                    // 空行は無視
+                    if (
+                        name === "" &&
+                        comment === ""
+                    ) {
+                        continue;
+                    }
+
+
+                    // ヘッダー行を自動判定
+                    if (
+                        i === 0 &&
+                        (
+                            name === "名前" ||
+                            name.toLowerCase() === "name"
+                        ) &&
+                        (
+                            comment === "コメント" ||
+                            comment.toLowerCase() === "comment"
+                        )
+                    ) {
+                        continue;
+                    }
+
+
+                    letters.push({
+                        name: name,
+                        comment: comment
+                    });
+                }
+
+
+                if (letters.length === 0) {
+
+                    throw new Error(
+                        "お便りが見つかりませんでした"
+                    );
+                }
+
+
+                /*
+                 * 読み込み状態をリセット
+                 */
+
+                currentIndex = -1;
+
+                readIndexes = [];
+
+
+                /*
+                 * 表示
+                 */
+
+                message.style.display = "none";
+
+                letter.classList.add("show");
+
+
+                status.textContent =
+                    `${letters.length}件のお便りを読み込みました`;
+
+
+                /*
+                 * 最初のお便りを表示
+                 */
+
+                showNextLetter();
+
+
+            } catch (error) {
+
+                console.error(error);
+
+
+                status.textContent =
+                    "読み込みに失敗しました";
+
+
+                message.style.display =
+                    "block";
+
+
+                message.textContent =
+                    "お便りを読み込めませんでした";
+            }
+        }
+
+
+        /* =====================================================
+           次のお便り
+           ===================================================== */
+
+        function showNextLetter() {
+
+            if (letters.length === 0) {
+
+                return;
+            }
+
+
+            /*
+             * 全件表示済み
+             */
+
+            if (
+                readIndexes.length >=
+                letters.length
+            ) {
+
+                nameElement.textContent = "";
+
+                commentElement.textContent =
+                    "すべてのお便りを読みました。";
+
+                iconElement.style.display =
+                    "none";
+
+
+                status.textContent =
+                    "全件終了";
+
+                return;
+            }
+
+
+            /*
+             * 未読のお便りからランダムに1件選ぶ
+             */
+
+            const unreadIndexes = [];
+
+
+            for (
+                let i = 0;
+                i < letters.length;
+                i++
+            ) {
+
+                if (
+                    !readIndexes.includes(i)
+                ) {
+
+                    unreadIndexes.push(i);
+                }
+            }
+
+
+            const randomPosition =
+                Math.floor(
+                    Math.random() *
+                    unreadIndexes.length
+                );
+
+
+            currentIndex =
+                unreadIndexes[randomPosition];
+
+
+            readIndexes.push(currentIndex);
+
+
+            const current =
+                letters[currentIndex];
+
+
+            /*
+             * 表示
+             */
+
+            nameElement.textContent =
+                current.name;
+
+            commentElement.textContent =
+                current.comment;
+
+
+            /*
+             * アイコンをランダム選択
+             */
+
+            setRandomIcon();
+
+
+            /*
+             * アニメーションを再実行
+             */
+
+            letter.classList.remove("show");
+
+
+            // 強制reflow
+            void letter.offsetWidth;
+
+
+            letter.classList.add("show");
+
+
+            status.textContent =
+                `${readIndexes.length} / ${letters.length}`;
+        }
+
+
+        /* =====================================================
+           ランダムアイコン
+           ===================================================== */
+
+        function setRandomIcon() {
+
+            const randomIndex =
+                Math.floor(
+                    Math.random() *
+                    ICONS.length
+                );
+
+
+            const imagePath =
+                ICONS[randomIndex];
+
+
+            iconElement.style.display =
+                "block";
+
+
+            iconElement.src =
+                imagePath;
+
+
+            /*
+             * 画像が存在しなかった場合
+             * 絵文字に切り替える
+             */
+
+            iconElement.onerror = function () {
+
+                iconElement.style.display =
+                    "none";
+
+                iconElement.onerror =
+                    null;
+            };
+        }
+
+
+        /* =====================================================
+           ボタン
+           ===================================================== */
+
+        loadButton.addEventListener(
+            "click",
+            loadSheet
+        );
+
+
+        nextButton.addEventListener(
+            "click",
+            showNextLetter
+        );
+
+
+        /* =====================================================
+           キーボード操作
+           ===================================================== */
+
+        document.addEventListener(
+            "keydown",
+            function(event) {
+
+                /*
+                 * Space
+                 */
+
+                if (
+                    event.code === "Space"
+                ) {
+
+                    /*
+                     * 入力欄にフォーカスしている場合は無視
+                     */
+
+                    if (
+                        document.activeElement.tagName ===
+                        "INPUT"
+                    ) {
+                        return;
+                    }
+
+
+                    event.preventDefault();
+
+                    showNextLetter();
+                }
+
+
+                /*
+                 * H
+                 */
+
+                if (
+                    event.key.toLowerCase() === "h"
+                ) {
+
+                    controlPanel.classList.toggle(
+                        "hidden"
+                    );
+                }
+            }
+        );
+
+    </script>
+
+</body>
+</html>
