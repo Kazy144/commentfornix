@@ -42,7 +42,7 @@
 
 
         /* =========================================
-           お便り表示
+           お便り表示画面
            ========================================= */
 
         .screen {
@@ -63,7 +63,8 @@
 
             width: min(1100px, 90vw);
 
-            background: rgba(255, 255, 255, 0.96);
+            background:
+                rgba(255, 255, 255, 0.96);
 
             color: #222;
 
@@ -72,7 +73,8 @@
             padding: 45px 55px;
 
             box-shadow:
-                0 20px 60px rgba(0, 0, 0, 0.35);
+                0 20px 60px
+                rgba(0, 0, 0, 0.35);
 
             display: none;
 
@@ -183,7 +185,7 @@
 
 
         /* =========================================
-           初期メッセージ
+           メッセージ
            ========================================= */
 
         .message {
@@ -303,12 +305,6 @@
         }
 
 
-        button + button {
-
-            margin-top: 8px;
-        }
-
-
         /* =========================================
            前へ・次へ
            ========================================= */
@@ -342,6 +338,8 @@
             color: #ccc;
 
             min-height: 20px;
+
+            line-height: 1.5;
         }
 
 
@@ -369,20 +367,20 @@
 
 
     <!-- =========================================
-         お便り表示画面
+         お便り表示
          ========================================= -->
 
     <div class="screen">
 
 
-        <!-- 読み込み前のメッセージ -->
+        <!-- 初期メッセージ -->
 
         <div
             id="message"
             class="message"
         >
 
-            シート番号を入力して
+            シート名を入力して
             「お便りを読み込む」を押してください
 
         </div>
@@ -459,18 +457,19 @@
         </h2>
 
 
-        <!-- シート番号 -->
+        <!-- シート名 -->
 
-        <label for="gid">
-            シート番号（gid）
+        <label for="sheetName">
+
+            シート名
+
         </label>
 
 
         <input
-            id="gid"
+            id="sheetName"
             type="text"
-            placeholder="例：0"
-            value="0"
+            placeholder="例：お便り"
         >
 
 
@@ -542,7 +541,7 @@
 
 
         /*
-         * ★ Google SheetsのURLは固定
+         * Google SheetsのURLは固定
          */
 
         const SHEET_URL =
@@ -553,19 +552,6 @@
         /* =====================================================
            アイコン
            ===================================================== */
-
-
-        /*
-         * GitHubリポジトリ内に
-         *
-         * icons/icon1.png
-         * icons/icon2.png
-         * icons/icon3.png
-         * icons/icon4.png
-         * icons/icon5.png
-         *
-         * を用意してください。
-         */
 
         const ICONS = [
 
@@ -587,7 +573,6 @@
            お便りデータ
            ===================================================== */
 
-
         let letters = [];
 
 
@@ -602,13 +587,12 @@
 
 
         /* =====================================================
-           HTML要素取得
+           HTML要素
            ===================================================== */
 
-
-        const gidInput =
+        const sheetNameInput =
             document.getElementById(
-                "gid"
+                "sheetName"
             );
 
 
@@ -674,9 +658,8 @@
 
 
         /* =====================================================
-           Google Sheets ID取得
+           Spreadsheet ID取得
            ===================================================== */
-
 
         function getSpreadsheetId(url) {
 
@@ -705,7 +688,6 @@
         /* =====================================================
            CSV解析
            ===================================================== */
-
 
         function parseCSV(text) {
 
@@ -741,10 +723,6 @@
 
                 if (char === '"') {
 
-
-                    /*
-                     * "" → "
-                     */
 
                     if (
                         insideQuotes &&
@@ -803,7 +781,7 @@
 
 
                     /*
-                     * WindowsのCRLF
+                     * CRLF
                      */
 
                     if (
@@ -861,23 +839,22 @@
            Google Sheets読み込み
            ===================================================== */
 
-
         async function loadSheet() {
 
 
-            const gid =
-                gidInput.value.trim();
+            const sheetName =
+                sheetNameInput.value.trim();
 
 
 
             /*
-             * gidチェック
+             * シート名が空
              */
 
-            if (!gid) {
+            if (!sheetName) {
 
                 status.textContent =
-                    "シート番号を入力してください";
+                    "シート名を入力してください";
 
                 return;
 
@@ -905,18 +882,31 @@
 
 
                 /*
-                 * Google Visualization API
+                 * シート名をURLエンコード
                  *
-                 * gidで対象シートを指定
+                 * 日本語のシート名にも対応
                  */
 
-                const csvUrl =
-                    `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&gid=${encodeURIComponent(gid)}`;
+                const encodedSheetName =
+                    encodeURIComponent(
+                        sheetName
+                    );
 
 
 
                 /*
-                 * データ取得
+                 * Google Visualization API
+                 *
+                 * sheet=シート名
+                 */
+
+                const csvUrl =
+                    `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&sheet=${encodedSheetName}`;
+
+
+
+                /*
+                 * Google Sheets取得
                  */
 
                 const response =
@@ -927,7 +917,7 @@
                 if (!response.ok) {
 
                     throw new Error(
-                        "Google Sheetsを読み込めませんでした"
+                        "SHEET_NOT_FOUND"
                     );
 
                 }
@@ -940,7 +930,30 @@
 
 
                 /*
-                 * CSVを配列に変換
+                 * Google Sheetsが存在しない場合、
+                 * エラーのCSV/HTMLが返るケースがあるため
+                 * 内容も確認する
+                 */
+
+                if (
+                    csv.includes(
+                        "Unable to parse query string"
+                    ) ||
+                    csv.includes(
+                        "Invalid query"
+                    )
+                ) {
+
+                    throw new Error(
+                        "SHEET_NOT_FOUND"
+                    );
+
+                }
+
+
+
+                /*
+                 * CSV解析
                  */
 
                 const rows =
@@ -960,9 +973,8 @@
                    A列 = 名前
                    B列 = コメント
 
-                   シートの上から順番に読み込む
+                   上から順番に読み込む
                    ================================================= */
-
 
                 for (
                     let i = 0;
@@ -1000,12 +1012,7 @@
 
 
                     /*
-                     * 1行目がヘッダーの場合
-                     *
-                     * 名前 / コメント
-                     * name / comment
-                     *
-                     * を自動的に除外
+                     * 1行目がヘッダーなら除外
                      */
 
                     if (
@@ -1043,16 +1050,20 @@
 
 
                 /*
-                 * お便りがない場合
+                 * お便りが0件
+                 *
+                 * シート自体は存在するが、
+                 * お便りがないケース
                  */
 
                 if (
                     letters.length === 0
                 ) {
 
-                    throw new Error(
-                        "お便りが見つかりませんでした"
-                    );
+                    status.textContent =
+                        "お便りがありません";
+
+                    return;
 
                 }
 
@@ -1081,7 +1092,7 @@
 
 
                 /*
-                 * ステータス
+                 * 読み込み完了
                  */
 
                 status.textContent =
@@ -1105,16 +1116,30 @@
                 );
 
 
+                /*
+                 * シートが存在しない場合
+                 */
+
+                if (
+                    error.message ===
+                    "SHEET_NOT_FOUND"
+                ) {
+
+                    status.textContent =
+                        "シートが見つかりません";
+
+                    return;
+
+                }
+
+
+
+                /*
+                 * その他のエラー
+                 */
+
                 status.textContent =
-                    "読み込みに失敗しました";
-
-
-                message.style.display =
-                    "block";
-
-
-                message.textContent =
-                    "お便りを読み込めませんでした";
+                    "お便りの読み込みに失敗しました";
 
             }
 
@@ -1126,13 +1151,8 @@
            次のお便り
            ===================================================== */
 
-
         function showNextLetter() {
 
-
-            /*
-             * データがない
-             */
 
             if (
                 letters.length === 0
@@ -1145,7 +1165,7 @@
 
 
             /*
-             * 最後まで来ている
+             * 最後のお便り
              */
 
             if (
@@ -1153,10 +1173,8 @@
                 letters.length - 1
             ) {
 
-
                 status.textContent =
                     "これが最後のお便りです";
-
 
                 return;
 
@@ -1171,10 +1189,6 @@
             currentIndex++;
 
 
-            /*
-             * 表示
-             */
-
             showCurrentLetter();
 
         }
@@ -1185,13 +1199,8 @@
            前のお便り
            ===================================================== */
 
-
         function showPreviousLetter() {
 
-
-            /*
-             * データがない
-             */
 
             if (
                 letters.length === 0
@@ -1211,10 +1220,8 @@
                 currentIndex <= 0
             ) {
 
-
                 status.textContent =
                     "これが最初のお便りです";
-
 
                 return;
 
@@ -1229,10 +1236,6 @@
             currentIndex--;
 
 
-            /*
-             * 表示
-             */
-
             showCurrentLetter();
 
         }
@@ -1243,13 +1246,8 @@
            現在のお便りを表示
            ===================================================== */
 
-
         function showCurrentLetter() {
 
-
-            /*
-             * 現在のお便り
-             */
 
             const current =
                 letters[currentIndex];
@@ -1277,7 +1275,7 @@
             /*
              * アイコン
              *
-             * アイコンだけランダム
+             * 毎回ランダム
              */
 
             setRandomIcon();
@@ -1292,13 +1290,6 @@
                 "show"
             );
 
-
-            /*
-             * 強制reflow
-             *
-             * これによって同じアニメーションを
-             * もう一度実行できます。
-             */
 
             void letter.offsetWidth;
 
@@ -1324,13 +1315,8 @@
            ランダムアイコン
            ===================================================== */
 
-
         function setRandomIcon() {
 
-
-            /*
-             * 5種類からランダム
-             */
 
             const randomIndex =
                 Math.floor(
@@ -1344,11 +1330,6 @@
 
 
 
-            /*
-             * アイコン表示
-
-             */
-
             iconElement.style.display =
                 "block";
 
@@ -1359,9 +1340,7 @@
 
 
             /*
-             * 画像が存在しない場合
-             *
-             * アイコン自体を非表示
+             * 画像がない場合
              */
 
             iconElement.onerror =
@@ -1407,15 +1386,13 @@
            キーボード操作
            ===================================================== */
 
-
         document.addEventListener(
             "keydown",
             function(event) {
 
 
                 /*
-                 * 入力欄を操作中は
-                 * キーボード操作を無効
+                 * 入力欄を操作中なら無視
                  */
 
                 if (
