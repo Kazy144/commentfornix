@@ -72,14 +72,15 @@
 
         .letter {
             width: min(1100px, 90vw);
+            max-width: 1100px;
 
-            /* コメント量に合わせて高さを変える */
+            /* 高さはJSで決める */
             height: auto;
             max-height: calc(100vh - 80px);
 
-            max-width: 1100px;
+            box-sizing: border-box;
 
-            background: rgba(255,255,255,0.96);
+            background: rgba(255, 255, 255, 0.96);
             color: #222;
 
             border-radius: 30px;
@@ -93,12 +94,9 @@
             overflow: hidden;
 
             animation: showLetter .35s ease;
-
-            box-sizing: border-box;
         }
 
         .letter.show {
-
             display: flex;
         }
 
@@ -125,57 +123,49 @@
         }
 
 
-        /* =========================================
-           ヘッダー
-           ========================================= */
-
+        /* ヘッダー */
         .header {
-
             display: flex;
-
             align-items: center;
 
-            gap: 25px;
+            width: 100%;
 
-            margin-bottom: 30px;
-
-            /*
-             * 名前部分を縮めすぎない
-             */
             flex-shrink: 0;
+
+            min-width: 0;
         }
 
 
-        /* =========================================
-           アイコン
-           ========================================= */
-
-        .icon {
-
+        /* アイコン */
+        .header img {
             width: 90px;
             height: 90px;
 
-            border-radius: 50%;
+            flex-shrink: 0;
 
             object-fit: cover;
-
-            background: #e5e7eb;
-
-            flex-shrink: 0;
         }
 
+        .header > div {
+            min-width: 0;
+            flex: 1 1 auto;
+            width: 0;
+        }
 
         /* 名前 */
         .name {
-            flex: 1;
             min-width: 0;
+            width: 100%;
+            max-width: 100%;
+
+            margin-left: 0;
+
+            font-size: 28px;
+            font-weight: bold;
 
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-
-            font-size: 28px;
-            font-weight: bold;
         }
 
 
@@ -191,6 +181,11 @@
 
         /* コメント */
         .comment {
+            width: 100%;
+            box-sizing: border-box;
+
+            margin-top: 30px;
+
             font-size: 32px;
             line-height: 1.7;
 
@@ -199,8 +194,7 @@
 
             overflow: hidden;
 
-            /* コメントの量に合わせて高さを確保 */
-            flex: none;
+            flex-shrink: 0;
         }
 
 
@@ -1267,60 +1261,132 @@
            長いコメントを画面内に収める
            ===================================================== */
         function fitCommentToLetter() {
-            const letter = document.querySelector(".letter");
-            const commentElement = document.querySelector(".comment");
-
             if (!letter || !commentElement) return;
 
-            const fullText = commentElement.dataset.fullText || "";
+            const fullText =
+                commentElement.dataset.fullText || "";
 
-            // 一度全文を表示
+            // まず全文を表示
             commentElement.textContent = fullText;
 
-            // 最大高さ
-            const maxHeight = window.innerHeight - 80;
+            // 実際の枠のpaddingを取得
+            const letterStyle =
+                window.getComputedStyle(letter);
 
-            // コメントが入るために必要な高さ
-            const requiredHeight = commentElement.scrollHeight;
+            const paddingTop =
+                parseFloat(letterStyle.paddingTop) || 0;
 
-            // ヘッダーなどの高さを取得
-            const header = document.querySelector(".header");
+            const paddingBottom =
+                parseFloat(letterStyle.paddingBottom) || 0;
 
-            const headerHeight = header ? header.offsetHeight : 0;
+            // コメントのmargin
+            const commentStyle =
+                window.getComputedStyle(commentElement);
 
-            // 上下padding
-            const padding = 90;
+            const commentMarginTop =
+                parseFloat(commentStyle.marginTop) || 0;
 
-            // コメント＋ヘッダー分の必要高さ
-            const totalRequiredHeight =
-                requiredHeight + headerHeight + padding;
+            // screenのpadding
+            const screen =
+                document.querySelector(".screen");
 
-            // 画面内に収まる高さ
-            const finalHeight = Math.min(
-                totalRequiredHeight,
-                maxHeight
-            );
+            const screenStyle =
+                screen
+                    ? window.getComputedStyle(screen)
+                    : null;
 
-            letter.style.height = finalHeight + "px";
+            const screenPaddingTop =
+                screenStyle
+                    ? parseFloat(screenStyle.paddingTop) || 0
+                    : 0;
 
-            // 最大高さを超えた場合はコメントをカット
+            const screenPaddingBottom =
+                screenStyle
+                    ? parseFloat(screenStyle.paddingBottom) || 0
+                    : 0;
+
+            // 画面内で使える最大高さ
+            const maxLetterHeight =
+                Math.max(
+                    1,
+                    window.innerHeight -
+                    screenPaddingTop -
+                    screenPaddingBottom
+                );
+
+            // ヘッダーの実際の高さ
+            const header =
+                document.querySelector(".header");
+
+            const headerHeight =
+                header
+                    ? header.offsetHeight
+                    : 0;
+
+            // コメント全文の実際の高さ
+            const fullCommentHeight =
+                commentElement.scrollHeight;
+
+            // 全文を表示するために必要な枠の高さ
+            const requiredLetterHeight =
+                paddingTop +
+                headerHeight +
+                commentMarginTop +
+                fullCommentHeight +
+                paddingBottom;
+
+            // 短いコメントなら小さく、
+            // 長ければ画面いっぱいまで
+            const letterHeight =
+                Math.min(
+                    requiredLetterHeight,
+                    maxLetterHeight
+                );
+
+            letter.style.height =
+                Math.max(letterHeight, 1) + "px";
+
+            // コメントに使用できる高さ
             const availableCommentHeight =
-                finalHeight - headerHeight - padding;
+                Math.max(
+                    0,
+                    letterHeight -
+                    paddingTop -
+                    headerHeight -
+                    commentMarginTop -
+                    paddingBottom
+                );
 
-            if (requiredHeight <= availableCommentHeight) {
+            // 全文が入るならそのまま
+            if (
+                fullCommentHeight <=
+                availableCommentHeight
+            ) {
+                commentElement.textContent =
+                    fullText;
+
                 return;
             }
 
+            // 入らない場合は
+            // 「…」を付けて入る文字数を探す
             let low = 0;
             let high = fullText.length;
 
             while (low < high) {
-                const mid = Math.ceil((low + high) / 2);
+
+                const mid =
+                    Math.ceil(
+                        (low + high) / 2
+                    );
 
                 commentElement.textContent =
                     fullText.slice(0, mid) + "…";
 
-                if (commentElement.scrollHeight <= availableCommentHeight) {
+                if (
+                    commentElement.scrollHeight <=
+                    availableCommentHeight
+                ) {
                     low = mid;
                 } else {
                     high = mid - 1;
