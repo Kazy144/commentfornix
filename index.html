@@ -1267,86 +1267,68 @@
            長いコメントを画面内に収める
            ===================================================== */
         function fitCommentToLetter() {
+            const letter = document.querySelector(".letter");
+            const commentElement = document.querySelector(".comment");
 
-            const header =
-                document.querySelector(".header");
+            if (!letter || !commentElement) return;
 
-            /*
-            * コメントに使える高さを取得
-            */
-            const availableHeight = commentElement.clientHeight;
-
-            if (availableHeight <= 0) {
-                return;
-            }
-
-            /*
-            * 元の全文を取得
-            */
             const fullText = commentElement.dataset.fullText || "";
 
-            /*
-            * まず全文を表示
-            */
+            // 一度全文を表示
             commentElement.textContent = fullText;
 
-            /*
-            * 全文が収まるならそのまま表示
-            */
+            // 最大高さ
+            const maxHeight = window.innerHeight - 80;
 
-            if (
-                commentElement.scrollHeight <= availableHeight
-            ) {
+            // コメントが入るために必要な高さ
+            const requiredHeight = commentElement.scrollHeight;
+
+            // ヘッダーなどの高さを取得
+            const header = document.querySelector(".header");
+
+            const headerHeight = header ? header.offsetHeight : 0;
+
+            // 上下padding
+            const padding = 90;
+
+            // コメント＋ヘッダー分の必要高さ
+            const totalRequiredHeight =
+                requiredHeight + headerHeight + padding;
+
+            // 画面内に収まる高さ
+            const finalHeight = Math.min(
+                totalRequiredHeight,
+                maxHeight
+            );
+
+            letter.style.height = finalHeight + "px";
+
+            // 最大高さを超えた場合はコメントをカット
+            const availableCommentHeight =
+                finalHeight - headerHeight - padding;
+
+            if (requiredHeight <= availableCommentHeight) {
                 return;
             }
 
-
-            /*
-            * =========================================
-            * 入りきらない場合
-            *
-            * 二分探索で表示できる最大文字数を探す
-            * =========================================
-            */
-
             let low = 0;
+            let high = fullText.length;
 
-            let high =
-                fullText.length;
-
-
-            while (
-                low < high
-            ) {
-
+            while (low < high) {
                 const mid = Math.ceil((low + high) / 2);
 
-                /*
-                * 最後に「…」を付ける
-                */
-                commentElement.textContent = fullText.slice(0,mid) + "…";
+                commentElement.textContent =
+                    fullText.slice(0, mid) + "…";
 
-                /*
-                * 高さに収まるか確認
-                */
-                if (
-                    commentElement.scrollHeight <= availableHeight
-                ) {
+                if (commentElement.scrollHeight <= availableCommentHeight) {
                     low = mid;
-                }
-                else {
+                } else {
                     high = mid - 1;
                 }
             }
 
-            /*
-            * 最終的な表示
-            */
             commentElement.textContent =
-                fullText.slice(
-                    0,
-                    low
-                ) + "…";
+                fullText.slice(0, low) + "…";
         }
 
 
