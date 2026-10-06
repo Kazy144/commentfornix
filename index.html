@@ -75,8 +75,14 @@
             width: min(1100px, 90vw);
 
             /*
-             * 画面の上下に40pxずつ余白を残す
-             */
+            * ウィンドウの高さに合わせて伸縮
+            */
+            height: calc(100vh - 80px);
+
+            /*
+            * 横方向・縦方向とも画面外には出さない
+            */
+            max-width: 1100px;
             max-height: calc(100vh - 80px);
 
             background:
@@ -95,18 +101,22 @@
             display: none;
 
             /*
-             * 枠からはみ出さない
-             */
+            * 中身を縦方向に配置
+            */
+            flex-direction: column;
+
+            /*
+            * 枠の外にはみ出さない
+            */
             overflow: hidden;
 
             animation:
                 showLetter 0.35s ease;
         }
 
-
         .letter.show {
 
-            display: block;
+            display: flex;
         }
 
 
@@ -209,13 +219,23 @@
 
             line-height: 1.7;
 
+            /*
+            * 横幅に合わせて自動改行
+            */
             white-space: pre-wrap;
 
             word-break: break-word;
 
             /*
-             * JavaScript側で高さを調整
-             */
+            * コメント部分だけ残りの高さを使用
+            */
+            flex: 1;
+
+            min-height: 0;
+
+            /*
+            * 入りきらない部分は隠す
+            */
             overflow: hidden;
         }
 
@@ -1271,9 +1291,7 @@
             /*
              * 前へ
              */
-
             currentIndex--;
-
 
             showCurrentLetter();
 
@@ -1284,104 +1302,48 @@
         /* =====================================================
            長いコメントを画面内に収める
            ===================================================== */
-
         function fitCommentToLetter() {
 
             const header =
-                document.querySelector(
-                    ".header"
-                );
-
-
-            const letterStyle =
-                getComputedStyle(
-                    letter
-                );
-
-
-            const paddingTop =
-                parseFloat(
-                    letterStyle.paddingTop
-                ) || 0;
-
-
-            const paddingBottom =
-                parseFloat(
-                    letterStyle.paddingBottom
-                ) || 0;
-
+                document.querySelector(".header");
 
             /*
-             * コメントに使用できる高さ
-             */
+            * コメントに使える高さを取得
+            */
+            const availableHeight = commentElement.clientHeight;
 
-            const availableHeight =
-                letter.clientHeight
-                - paddingTop
-                - paddingBottom
-                - header.offsetHeight
-                - (
-                    parseFloat(
-                        getComputedStyle(header)
-                            .marginBottom
-                    ) || 0
-                );
+            if (availableHeight <= 0) {
+                return;
+            }
 
+            /*
+            * 元の全文を取得
+            */
+            const fullText = commentElement.dataset.fullText || "";
+
+            /*
+            * まず全文を表示
+            */
+            commentElement.textContent = fullText;
+
+            /*
+            * 全文が収まるならそのまま表示
+            */
 
             if (
-                availableHeight <= 0
+                commentElement.scrollHeight <= availableHeight
             ) {
-
                 return;
-
             }
 
 
             /*
-             * コメントの最大高さを設定
-             */
-
-            commentElement.style.maxHeight =
-                `${availableHeight}px`;
-
-
-            /*
-             * 元の全文を取得
-             */
-
-            const fullText =
-                commentElement.dataset.fullText || "";
-
-
-            /*
-             * まず全文を表示して確認
-             */
-
-            commentElement.textContent =
-                fullText;
-
-
-            /*
-             * 全文が収まるならそのまま
-             */
-
-            if (
-                commentElement.scrollHeight <=
-                availableHeight
-            ) {
-
-                return;
-
-            }
-
-
-            /*
-             * =========================================
-             * 長すぎる場合
-             *
-             * 二分探索で最大文字数を探す
-             * =========================================
-             */
+            * =========================================
+            * 入りきらない場合
+            *
+            * 二分探索で表示できる最大文字数を探す
+            * =========================================
+            */
 
             let low = 0;
 
@@ -1393,47 +1355,34 @@
                 low < high
             ) {
 
-                const mid =
-                    Math.ceil(
-                        (low + high) / 2
-                    );
+                const mid = Math.ceil((low + high) / 2);
 
+                /*
+                * 最後に「…」を付ける
+                */
+                commentElement.textContent = fullText.slice(0,mid) + "…";
 
-                commentElement.textContent =
-                    fullText.slice(
-                        0,
-                        mid
-                    ) + "…";
-
-
+                /*
+                * 高さに収まるか確認
+                */
                 if (
-                    commentElement.scrollHeight <=
-                    availableHeight
+                    commentElement.scrollHeight <= availableHeight
                 ) {
-
                     low = mid;
-
                 }
                 else {
-
-                    high =
-                        mid - 1;
-
+                    high = mid - 1;
                 }
-
             }
 
-
             /*
-             * 最終的な表示
-             */
-
+            * 最終的な表示
+            */
             commentElement.textContent =
                 fullText.slice(
                     0,
                     low
                 ) + "…";
-
         }
 
 
