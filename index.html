@@ -71,47 +71,30 @@
            ========================================= */
 
         .letter {
-
             width: min(1100px, 90vw);
 
-            /*
-            * ウィンドウの高さに合わせて伸縮
-            */
-            height: calc(100vh - 80px);
-
-            /*
-            * 横方向・縦方向とも画面外には出さない
-            */
-            max-width: 1100px;
+            /* コメント量に合わせて高さを変える */
+            height: auto;
             max-height: calc(100vh - 80px);
 
-            background:
-                rgba(255, 255, 255, 0.96);
+            max-width: 1100px;
 
+            background: rgba(255,255,255,0.96);
             color: #222;
 
             border-radius: 30px;
-
             padding: 45px 55px;
 
-            box-shadow:
-                0 20px 60px
-                rgba(0, 0, 0, 0.35);
+            box-shadow: 0 20px 60px rgba(0,0,0,.35);
 
             display: none;
-
-            /*
-            * 中身を縦方向に配置
-            */
             flex-direction: column;
 
-            /*
-            * 枠の外にはみ出さない
-            */
             overflow: hidden;
 
-            animation:
-                showLetter 0.35s ease;
+            animation: showLetter .35s ease;
+
+            box-sizing: border-box;
         }
 
         .letter.show {
@@ -182,20 +165,17 @@
         }
 
 
-        /* =========================================
-           名前
-           ========================================= */
-
+        /* 名前 */
         .name {
+            flex: 1;
+            min-width: 0;
 
-            font-size: 30px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
 
+            font-size: 28px;
             font-weight: bold;
-
-            /*
-             * 長い名前でも横にはみ出さない
-             */
-            word-break: break-word;
         }
 
 
@@ -209,34 +189,18 @@
         }
 
 
-        /* =========================================
-           コメント
-           ========================================= */
-
+        /* コメント */
         .comment {
-
             font-size: 32px;
-
             line-height: 1.7;
 
-            /*
-            * 横幅に合わせて自動改行
-            */
             white-space: pre-wrap;
-
             word-break: break-word;
 
-            /*
-            * コメント部分だけ残りの高さを使用
-            */
-            flex: 1;
-
-            min-height: 0;
-
-            /*
-            * 入りきらない部分は隠す
-            */
             overflow: hidden;
+
+            /* コメントの量に合わせて高さを確保 */
+            flex: none;
         }
 
 
