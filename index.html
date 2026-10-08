@@ -374,6 +374,10 @@
 
     </style>
 
+
+    <!-- Google SheetsのExcelデータ解析用 -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
 </head>
 
 
@@ -851,206 +855,15 @@
         Google Sheetsからシート一覧を取得
         ===================================================== */
 
-        async function getSheetList(spreadsheetId) {
-
-            const url =
-                `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
-
-            const response =
-                await fetch(url);
-
-            if (!response.ok) {
-
-                throw new Error(
-                    "SPREADSHEET_ACCESS_ERROR"
-                );
-
-            }
-
-            const html =
-                await response.text();
-
-
-            /*
-            * Google Sheets内部に保存されている
-            * シート情報を探す
-            *
-            * Google Sheetsの内部形式が変更された場合に備えて
-            * 複数のパターンを試す
-            */
-
-            const sheets = [];
-
-
-            /*
-            * =====================================================
-            * パターン1
-            *
-            * "sheetId":123456,
-            * "title":"シート名"
-            * =====================================================
-            */
-
-            const pattern1 =
-                /"sheetId"\s*:\s*(\d+)[^{}]{0,500}?"title"\s*:\s*"((?:\\.|[^"\\])*)"/g;
-
-            let match;
-
-
-            while (
-                (match = pattern1.exec(html)) !== null
-            ) {
-
-                const gid =
-                    match[1];
-
-                const name =
-                    decodeGoogleString(
-                        match[2]
-                    );
-
-
-                if (
-                    !sheets.some(
-                        sheet =>
-                            sheet.gid === gid
-                    )
-                ) {
-
-                    sheets.push({
-
-                        name: name,
-
-                        gid: gid
-
-                    });
-
-                }
-
-            }
-
-
-            /*
-            * =====================================================
-            * パターン2
-            *
-            * "title":"シート名"
-            * の近くに "sheetId": がある形式
-            * =====================================================
-            */
-
-            const pattern2 =
-                /"title"\s*:\s*"((?:\\.|[^"\\])*)"[^{}]{0,500}?"sheetId"\s*:\s*(\d+)/g;
-
-
-            while (
-                (match = pattern2.exec(html)) !== null
-            ) {
-
-                const name =
-                    decodeGoogleString(
-                        match[1]
-                    );
-
-                const gid =
-                    match[2];
-
-
-                if (
-                    !sheets.some(
-                        sheet =>
-                            sheet.gid === gid
-                    )
-                ) {
-
-                    sheets.push({
-
-                        name: name,
-
-                        gid: gid
-
-                    });
-
-                }
-
-            }
-
-
-            /*
-            * =====================================================
-            * シートが取得できなかった
-            * =====================================================
-            */
-
-            if (
-                sheets.length === 0
-            ) {
-
-                console.error(
-                    "Google Sheetsからシート一覧を取得できませんでした"
-                );
-
-                throw new Error(
-                    "SHEET_LIST_ERROR"
-                );
-
-            }
-
-
-            console.log(
-                "取得したシート一覧:",
-                sheets
-            );
-
-
-            return sheets;
-
-        }
-
-
-        /* =====================================================
-        Google Sheets内部の文字列をデコード
-        ===================================================== */
-
-        function decodeGoogleString(value) {
-
-            try {
-
-                /*
-                * JSON文字列として解釈
-                */
-
-                return JSON.parse(
-                    `"${value}"`
-                );
-
-            }
-            catch (error) {
-
-                /*
-                * JSONとして解釈できなかった場合
-                */
-
-                return value
-                    .replace(/\\"/g, '"')
-                    .replace(/\\\\/g, "\\")
-                    .replace(/\\n/g, "\n")
-                    .replace(/\\r/g, "\r")
-                    .replace(/\\t/g, "\t");
-
-            }
-
-        }
-
-
-        /* =====================================================
-        Google Sheets読み込み
-        ===================================================== */
-
         async function loadSheet() {
+
+            /* =====================================================
+               入力されたシート名
+               ===================================================== */
 
             const sheetName =
                 sheetNameInput.value.trim();
+
 
             if (!sheetName) {
 
@@ -1065,149 +878,238 @@
 
             }
 
+
+            /* =====================================================
+               読み込み開始時に前回のお便りを消す
+               ===================================================== */
+
+            letters = [];
+
+            currentIndex = -1;
+
+            letter.classList.remove("show");
+
+            message.style.display = "block";
+
+            message.textContent =
+                "シートを確認しています...";
+
+            status.textContent =
+                "シート一覧を確認中...";
+
+
+            loadButton.disabled = true;
+
+
             try {
 
-                status.textContent =
-                    "シートを確認中...";
+                /* =====================================================
+                   Spreadsheet ID
+                   ===================================================== */
 
                 const spreadsheetId =
                     getSpreadsheetId(
                         SHEET_URL
                     );
 
-                /*
-                 * =====================================================
-                 * シート名を「range」として指定します。
-                 *
-                 * 前回の sheet= 方式では、Google側の挙動によって
-                 * 存在しないシート名でも別のシートが返ることがありました。
-                 *
-                 * range='シート名'!A:B とすることで、
-                 * 指定したシートそのものを問い合わせます。
-                 * =====================================================
-                 */
 
-                const escapedSheetName =
-                    sheetName.replace(/'/g, "''");
+                /* =====================================================
+                   Google Sheets全体をXLSXとして取得
 
-                const range =
-                    `'${escapedSheetName}'!A:B`;
+                   ここでは「入力されたシート名」に直接
+                   問い合わせません。
 
-                const url =
-                    `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?` +
-                    `tqx=out:json&headers=0&range=${encodeURIComponent(range)}`;
+                   まずスプレッドシート全体を取得し、
+                   実際に存在するシート一覧を取得します。
+                   ===================================================== */
 
-                console.log(
-                    "シート確認URL:",
-                    url
-                );
+                const xlsxUrl =
+                    `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=xlsx`;
+
 
                 const response =
                     await fetch(
-                        url
+                        xlsxUrl,
+                        {
+                            method: "GET",
+                            cache: "no-store"
+                        }
                     );
+
 
                 if (!response.ok) {
 
                     throw new Error(
-                        "SHEET_LOAD_ERROR"
+                        "SPREADSHEET_ACCESS_ERROR"
                     );
 
                 }
 
-                const responseText =
-                    await response.text();
 
-                /*
-                 * gvizのJSONPラッパーを取り除く
-                 *
-                 * google.visualization.Query.setResponse({...})
-                 */
+                const arrayBuffer =
+                    await response.arrayBuffer();
 
-                const jsonStart =
-                    responseText.indexOf("{");
-
-                const jsonEnd =
-                    responseText.lastIndexOf("}");
 
                 if (
-                    jsonStart < 0 ||
-                    jsonEnd < jsonStart
+                    !arrayBuffer ||
+                    arrayBuffer.byteLength === 0
                 ) {
 
                     throw new Error(
-                        "SHEET_LOAD_ERROR"
+                        "EMPTY_SPREADSHEET_FILE"
                     );
 
                 }
 
-                let data;
 
-                try {
-
-                    data = JSON.parse(
-                        responseText.slice(
-                            jsonStart,
-                            jsonEnd + 1
-                        )
-                    );
-
-                }
-                catch (parseError) {
-
-                    console.error(
-                        "Google Sheets JSON解析エラー:",
-                        parseError,
-                        responseText
-                    );
-
-                    throw new Error(
-                        "SHEET_LOAD_ERROR"
-                    );
-
-                }
-
-                /*
-                 * =====================================================
-                 * ここが重要
-                 *
-                 * 指定したシートが存在しない場合、gvizは
-                 * status="error" を返すため、ここで確実に停止します。
-                 * =====================================================
-                 */
+                /* =====================================================
+                   XLSXを解析
+                   ===================================================== */
 
                 if (
-                    data.status !== "ok"
+                    typeof XLSX === "undefined"
                 ) {
 
-                    console.error(
-                        "Google Sheetsエラー:",
-                        data
+                    throw new Error(
+                        "XLSX_LIBRARY_ERROR"
                     );
-
-                    const error =
-                        new Error(
-                            "SHEET_NOT_FOUND"
-                        );
-
-                    throw error;
 
                 }
 
-                const table =
-                    data.table || {};
+
+                const workbook =
+                    XLSX.read(
+                        arrayBuffer,
+                        {
+                            type: "array"
+                        }
+                    );
+
+
+                /* =====================================================
+                   実在するシート名一覧
+                   ===================================================== */
+
+                const sheetNames =
+                    Array.isArray(
+                        workbook.SheetNames
+                    )
+                        ? workbook.SheetNames
+                        : [];
+
+
+                console.log(
+                    "実際に存在するシート:",
+                    sheetNames
+                );
+
+
+                if (
+                    sheetNames.length === 0
+                ) {
+
+                    throw new Error(
+                        "SHEET_LIST_ERROR"
+                    );
+
+                }
+
+
+                /* =====================================================
+                   シート名を完全一致で検索
+
+                   大文字・小文字も区別します。
+                   ===================================================== */
+
+                const targetSheetName =
+                    sheetNames.find(
+                        name =>
+                            name === sheetName
+                    );
+
+
+                /* =====================================================
+                   存在しないシート
+
+                   ここで必ず終了します。
+                   別のシートを読み込むことはありません。
+                   ===================================================== */
+
+                if (!targetSheetName) {
+
+                    message.style.display = "block";
+
+                    message.textContent =
+                        `シート「${sheetName}」は存在しません`;
+
+                    letter.classList.remove("show");
+
+                    status.textContent =
+                        `エラー：シート「${sheetName}」は存在しません`;
+
+                    alert(
+                        `シート「${sheetName}」は存在しません。`
+                    );
+
+                    return;
+
+                }
+
+
+                console.log(
+                    "読み込むシート:",
+                    targetSheetName
+                );
+
+
+                status.textContent =
+                    `シート「${targetSheetName}」を読み込み中...`;
+
+
+                /* =====================================================
+                   対象シートを取得
+                   ===================================================== */
+
+                const worksheet =
+                    workbook.Sheets[
+                        targetSheetName
+                    ];
+
+
+                if (!worksheet) {
+
+                    throw new Error(
+                        "SHEET_DATA_ERROR"
+                    );
+
+                }
+
+
+                /* =====================================================
+                   A列・B列を2次元配列として取得
+
+                   A列 = 名前
+                   B列 = コメント
+                   ===================================================== */
 
                 const rows =
-                    table.rows || [];
+                    XLSX.utils.sheet_to_json(
+                        worksheet,
+                        {
+                            header: 1,
+                            raw: false,
+                            defval: "",
+                            blankrows: false
+                        }
+                    );
+
+
+                /* =====================================================
+                   お便りデータを作成
+                   ===================================================== */
 
                 letters = [];
 
-                /*
-                 * =====================================================
-                 * A列 = 名前
-                 * B列 = コメント
-                 * =====================================================
-                 */
 
                 for (
                     let i = 0;
@@ -1215,20 +1117,26 @@
                     i++
                 ) {
 
-                    const cells =
-                        rows[i].c || [];
+                    const row =
+                        rows[i] || [];
+
 
                     const name =
-                        cells[0]?.v != null
-                            ? String(cells[0].v).trim()
-                            : "";
+                        String(
+                            row[0] ?? ""
+                        ).trim();
+
 
                     const comment =
-                        cells[1]?.v != null
-                            ? String(cells[1].v).trim()
-                            : "";
+                        String(
+                            row[1] ?? ""
+                        ).trim();
 
-                    /* 完全な空行は無視 */
+
+                    /*
+                     * 完全な空行は無視
+                     */
+
                     if (
                         name === "" &&
                         comment === ""
@@ -1238,9 +1146,11 @@
 
                     }
 
+
                     /*
-                     * 1行目が「名前 / コメント」の場合はヘッダーとして除外
+                     * 1行目がヘッダーなら除外
                      */
+
                     if (
                         i === 0 &&
                         (
@@ -1257,6 +1167,11 @@
 
                     }
 
+
+                    /*
+                     * お便りとして追加
+                     */
+
                     letters.push({
 
                         name: name,
@@ -1267,28 +1182,44 @@
 
                 }
 
-                /*
-                 * =====================================================
-                 * 指定したシートは存在するが、お便りが0件
-                 * =====================================================
-                 */
+
+                /* =====================================================
+                   お便りが0件
+                   ===================================================== */
 
                 if (
                     letters.length === 0
                 ) {
 
-                    alert(
-                        `シート「${sheetName}」は存在しますが、お便りがありません。`
-                    );
+                    message.style.display = "block";
+
+                    message.textContent =
+                        `シート「${sheetName}」にお便りがありません`;
+
+                    letter.classList.remove("show");
 
                     status.textContent =
-                        `シート「${sheetName}」は存在しますが、お便りがありません`;
+                        "シートは存在しますが、お便りがありません";
+
+                    alert(
+                        `シート「${sheetName}」にお便りがありません。`
+                    );
 
                     return;
 
                 }
 
+
+                /* =====================================================
+                   現在位置をリセット
+                   ===================================================== */
+
                 currentIndex = -1;
+
+
+                /* =====================================================
+                   表示切り替え
+                   ===================================================== */
 
                 message.style.display =
                     "none";
@@ -1297,152 +1228,133 @@
                     "show"
                 );
 
+
+                /* =====================================================
+                   読み込み完了
+                   ===================================================== */
+
                 status.textContent =
                     `${letters.length}件のお便りを読み込みました`;
 
+
+                /* =====================================================
+                   最初のお便り
+                   ===================================================== */
+
                 showNextLetter();
+
 
             }
             catch (error) {
 
                 console.error(
-                    "お便り読み込みエラー:",
                     error
                 );
 
+
+                /*
+                 * エラー発生時は、以前に読み込んだ
+                 * お便りを残さない
+                 */
+
+                letters = [];
+
+                currentIndex = -1;
+
+                letter.classList.remove("show");
+
+                message.style.display = "block";
+
+
                 if (
                     error.message ===
-                    "SHEET_NOT_FOUND"
+                    "SPREADSHEET_ACCESS_ERROR"
                 ) {
 
-                    alert(
-                        `シート「${sheetName}」は存在しません。`
-                    );
+                    message.textContent =
+                        "スプレッドシートを読み込めませんでした";
 
                     status.textContent =
-                        `シート「${sheetName}」は存在しません`;
+                        "スプレッドシートへのアクセスに失敗しました";
 
-                    return;
+                    alert(
+                        "スプレッドシートを読み込めませんでした。公開設定やURLを確認してください。"
+                    );
+
+                }
+                else if (
+                    error.message ===
+                    "XLSX_LIBRARY_ERROR"
+                ) {
+
+                    message.textContent =
+                        "Excel解析ライブラリを読み込めませんでした";
+
+                    status.textContent =
+                        "XLSXライブラリの読み込みに失敗しました";
+
+                    alert(
+                        "Excel解析ライブラリを読み込めませんでした。インターネット接続を確認してください。"
+                    );
+
+                }
+                else if (
+                    error.message ===
+                    "SHEET_LIST_ERROR"
+                ) {
+
+                    message.textContent =
+                        "シート一覧を取得できませんでした";
+
+                    status.textContent =
+                        "シート一覧の取得に失敗しました";
+
+                    alert(
+                        "シート一覧を取得できませんでした。スプレッドシートの公開設定を確認してください。"
+                    );
+
+                }
+                else if (
+                    error.message ===
+                    "SHEET_DATA_ERROR"
+                ) {
+
+                    message.textContent =
+                        "シートのデータを読み込めませんでした";
+
+                    status.textContent =
+                        "シートデータの取得に失敗しました";
+
+                    alert(
+                        "対象シートのデータを読み込めませんでした。"
+                    );
+
+                }
+                else {
+
+                    message.textContent =
+                        "お便りを読み込めませんでした";
+
+                    status.textContent =
+                        "読み込み中にエラーが発生しました";
+
+                    alert(
+                        "お便りの読み込み中にエラーが発生しました。詳細はブラウザのコンソールを確認してください。"
+                    );
 
                 }
 
-                if (
-                    error.message ===
-                    "SHEET_LOAD_ERROR"
-                ) {
+            }
+            finally {
 
-                    alert(
-                        `シート「${sheetName}」を読み込めませんでした。\n\n` +
-                        "スプレッドシートの公開設定を確認してください。"
-                    );
-
-                    status.textContent =
-                        `シート「${sheetName}」を読み込めませんでした`;
-
-                    return;
-
-                }
-
-                alert(
-                    "お便りの読み込みに失敗しました。"
-                );
-
-                status.textContent =
-                    "お便りの読み込みに失敗しました";
+                loadButton.disabled = false;
 
             }
 
         }
 
-        /* =====================================================
-           次のお便り
-           ===================================================== */
 
-        function showNextLetter() {
-
-
-            if (
-                letters.length === 0
-            ) {
-
-                return;
-
-            }
-
-
-            /*
-             * 最後のお便り
-             */
-
-            if (
-                currentIndex >=
-                letters.length - 1
-            ) {
-
-                status.textContent =
-                    "これが最後のお便りです";
-
-                return;
-
-            }
-
-
-            /*
-             * 次へ
-             */
-
-            currentIndex++;
-
-
-            showCurrentLetter();
-
-        }
-
-
-
-        /* =====================================================
-           前のお便り
-           ===================================================== */
-
-        function showPreviousLetter() {
-
-
-            if (
-                letters.length === 0
-            ) {
-
-                return;
-
-            }
-
-
-            /*
-             * 最初のお便り
-             */
-
-            if (
-                currentIndex <= 0
-            ) {
-
-                status.textContent =
-                    "これが最初のお便りです";
-
-                return;
-
-            }
-
-
-            /*
-             * 前へ
-             */
-            currentIndex--;
-
-            showCurrentLetter();
-
-        }
-
-
-
+        
         /* =====================================================
            長いコメントを画面内に収める
            ===================================================== */
