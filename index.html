@@ -869,14 +869,13 @@
                     "シート名を入力してください";
 
                 return;
-
             }
 
 
             try {
 
                 status.textContent =
-                    "シートを確認中...";
+                    "読み込み中...";
 
 
                 /*
@@ -890,93 +889,7 @@
 
                 /*
                 * =====================================================
-                * スプレッドシート本体を取得
-                * =====================================================
-                */
-
-                const spreadsheetUrl =
-                    `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
-
-                const spreadsheetResponse =
-                    await fetch(spreadsheetUrl);
-
-
-                if (!spreadsheetResponse.ok) {
-
-                    throw new Error(
-                        "SPREADSHEET_ACCESS_ERROR"
-                    );
-
-                }
-
-
-                const spreadsheetHtml =
-                    await spreadsheetResponse.text();
-
-
-                /*
-                * =====================================================
-                * シート名が本当に存在するか確認
-                *
-                * 「文字列が含まれているか」ではなく、
-                * シート名として登録されているものと比較する
-                * =====================================================
-                */
-
-                const escapedSheetName =
-                    sheetName
-                        .replace(/\\/g, "\\\\")
-                        .replace(/"/g, '\\"');
-
-
-                /*
-                * Google Sheets内部の
-                *
-                * "name":"シート名"
-                *
-                * または
-                *
-                * "title":"シート名"
-                *
-                * を検索
-                */
-
-                const sheetNamePattern =
-                    new RegExp(
-                        `"(?:(?:name)|(?:title))"\\s*:\\s*"${escapedSheetName}"`,
-                        "i"
-                    );
-
-
-                const sheetExists =
-                    sheetNamePattern.test(
-                        spreadsheetHtml
-                    );
-
-
-                /*
-                * =====================================================
-                * 存在しないシート
-                * =====================================================
-                */
-
-                if (!sheetExists) {
-
-                    alert(
-                        `シート「${sheetName}」が存在しません。`
-                    );
-
-                    status.textContent =
-                        `シート「${sheetName}」が存在しません`;
-
-                    return;
-
-                }
-
-
-                /*
-                * =====================================================
-                * シート名をURLエンコード
+                * Google Sheetsから指定シートをJSONで取得
                 * =====================================================
                 */
 
@@ -986,51 +899,89 @@
                     );
 
 
-                /*
-                * =====================================================
-                * CSV取得
-                * =====================================================
-                */
-
-                status.textContent =
-                    "お便りを読み込み中...";
-
-
-                const csvUrl =
-                    `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&sheet=${encodedSheetName}`;
+                const apiUrl =
+                    `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&sheet=${encodedSheetName}`;
 
 
                 const response =
-                    await fetch(csvUrl);
+                    await fetch(apiUrl);
 
 
                 if (!response.ok) {
 
                     throw new Error(
-                        "SHEET_LOAD_ERROR"
+                        "SHEET_NOT_FOUND"
                     );
 
                 }
 
 
-                const csv =
+                const responseText =
                     await response.text();
 
 
                 /*
-                * Google Sheets側のエラー確認
+                * =====================================================
+                * Google Visualization APIのJSON部分を取り出す
+                *
+                * 返ってくるデータは
+                *
+                * google.visualization.Query.setResponse(...)
+                *
+                * という形式になっている
+                * =====================================================
                 */
 
+                const start =
+                    responseText.indexOf(
+                        "{"
+                    );
+
+
+                const end =
+                    responseText.lastIndexOf(
+                        "}"
+                    );
+
+
                 if (
-                    csv.includes("#REF!") ||
-                    csv.includes("#ERROR!") ||
-                    csv.includes("Unable to parse query string") ||
-                    csv.includes("Invalid query") ||
-                    csv.includes("Error")
+                    start === -1 ||
+                    end === -1
                 ) {
 
                     throw new Error(
-                        "SHEET_LOAD_ERROR"
+                        "SHEET_NOT_FOUND"
+                    );
+
+                }
+
+
+                const jsonText =
+                    responseText.substring(
+                        start,
+                        end + 1
+                    );
+
+
+                const data =
+                    JSON.parse(
+                        jsonText
+                    );
+
+
+                /*
+                * =====================================================
+                * シートが存在しない場合
+                * =====================================================
+                */
+
+                if (
+                    data.status !== "ok" ||
+                    !data.table
+                ) {
+
+                    throw new Error(
+                        "SHEET_NOT_FOUND"
                     );
 
                 }
@@ -1038,12 +989,12 @@
 
                 /*
                 * =====================================================
-                * CSV解析
+                * データを取得
                 * =====================================================
                 */
 
                 const rows =
-                    parseCSV(csv);
+                    data.table.rows || [];
 
 
                 /*
@@ -1067,15 +1018,19 @@
                 ) {
 
                     const row =
-                        rows[i];
+                        rows[i].c || [];
 
 
                     const name =
-                        row[0]?.trim() || "";
+                        row[0]?.v != null
+                            ? String(row[0].v).trim()
+                            : "";
 
 
                     const comment =
-                        row[1]?.trim() || "";
+                        row[1]?.v != null
+                            ? String(row[1].v).trim()
+                            : "";
 
 
                     /*
@@ -1088,28 +1043,6 @@
                     ) {
 
                         continue;
-
-                    }
-
-
-                    /*
-                    * 1行目がヘッダーなら除外
-                    */
-
-                    if (
-                        i === 0 &&
-                        (
-                            name === "名前" ||
-                            name.toLowerCase() === "name"
-                        ) &&
-                        (
-                            comment === "コメント" ||
-                            comment.toLowerCase() === "comment"
-                        )
-                    ) {
-
-                        continue;
-
                     }
 
 
@@ -1146,19 +1079,22 @@
                         "お便りがありません";
 
                     return;
-
                 }
 
 
                 /*
+                * =====================================================
                 * 現在位置をリセット
+                * =====================================================
                 */
 
                 currentIndex = -1;
 
 
                 /*
+                * =====================================================
                 * 表示切り替え
+                * =====================================================
                 */
 
                 message.style.display =
@@ -1171,7 +1107,9 @@
 
 
                 /*
+                * =====================================================
                 * 読み込み完了
+                * =====================================================
                 */
 
                 status.textContent =
@@ -1179,7 +1117,9 @@
 
 
                 /*
+                * =====================================================
                 * 最初のお便り
+                * =====================================================
                 */
 
                 showNextLetter();
@@ -1188,54 +1128,37 @@
             }
             catch (error) {
 
-                console.error(error);
+                console.error(
+                    error
+                );
 
 
                 /*
-                * スプレッドシート自体に
-                * アクセスできない場合
+                * =====================================================
+                * シートが存在しない
+                * =====================================================
                 */
 
                 if (
                     error.message ===
-                    "SPREADSHEET_ACCESS_ERROR"
+                    "SHEET_NOT_FOUND"
                 ) {
 
                     alert(
-                        "Googleスプレッドシートにアクセスできません。"
+                        `シート「${sheetName}」が存在しません。`
                     );
 
                     status.textContent =
-                        "スプレッドシートにアクセスできません";
+                        `シート「${sheetName}」が存在しません`;
 
                     return;
-
                 }
 
 
                 /*
-                * シートの読み込みエラー
-                */
-
-                if (
-                    error.message ===
-                    "SHEET_LOAD_ERROR"
-                ) {
-
-                    alert(
-                        `シート「${sheetName}」を読み込めませんでした。`
-                    );
-
-                    status.textContent =
-                        `シート「${sheetName}」を読み込めませんでした`;
-
-                    return;
-
-                }
-
-
-                /*
+                * =====================================================
                 * その他のエラー
+                * =====================================================
                 */
 
                 alert(
@@ -1248,7 +1171,6 @@
             }
 
         }
-
 
         /* =====================================================
            次のお便り
