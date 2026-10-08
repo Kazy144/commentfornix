@@ -859,10 +859,11 @@
 
 
             /*
-             * シート名が空
-             */
-
+            * シート名が空
+            */
             if (!sheetName) {
+
+                alert("シート名を入力してください");
 
                 status.textContent =
                     "シート名を入力してください";
@@ -879,9 +880,8 @@
 
 
                 /*
-                 * Spreadsheet ID
-                 */
-
+                * Spreadsheet ID
+                */
                 const spreadsheetId =
                     getSpreadsheetId(
                         SHEET_URL
@@ -889,52 +889,8 @@
 
 
                 /*
-                 * =====================================================
-                 * スプレッドシートのHTMLを取得
-                 * 指定されたシート名が存在するか確認
-                 * =====================================================
-                 */
-
-                const spreadsheetResponse =
-                    await fetch(
-                        `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`
-                    );
-
-
-                if (!spreadsheetResponse.ok) {
-
-                    throw new Error(
-                        "SPREADSHEET_ACCESS_ERROR"
-                    );
-
-                }
-
-
-                const spreadsheetHtml =
-                    await spreadsheetResponse.text();
-
-
-                /*
-                 * シート名の存在確認
-                 */
-
-                if (
-                    !spreadsheetHtml.includes(
-                        sheetName
-                    )
-                ) {
-
-                    throw new Error(
-                        "SHEET_NOT_FOUND"
-                    );
-
-                }
-
-
-                /*
-                 * シート名をURLエンコード
-                 */
-
+                * シート名をURLエンコード
+                */
                 const encodedSheetName =
                     encodeURIComponent(
                         sheetName
@@ -942,9 +898,10 @@
 
 
                 /*
-                 * CSV取得
-                 */
-
+                * CSV取得
+                *
+                * 指定したシートを直接取得する
+                */
                 const csvUrl =
                     `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&sheet=${encodedSheetName}`;
 
@@ -967,19 +924,17 @@
 
 
                 /*
-                 * Google Sheets側のエラー確認
-                 */
-
+                * Google Sheets側のエラー確認
+                *
+                * 存在しないシートの場合などに
+                * エラーが返ってきた場合は読み込まない
+                */
                 if (
-                    csv.includes(
-                        "Unable to parse query string"
-                    ) ||
-                    csv.includes(
-                        "Invalid query"
-                    ) ||
-                    csv.includes(
-                        "Error"
-                    )
+                    csv.includes("#REF!") ||
+                    csv.includes("#ERROR!") ||
+                    csv.includes("Unable to parse query string") ||
+                    csv.includes("Invalid query") ||
+                    csv.includes("Error")
                 ) {
 
                     throw new Error(
@@ -990,26 +945,24 @@
 
 
                 /*
-                 * CSV解析
-                 */
-
+                * CSV解析
+                */
                 const rows =
                     parseCSV(csv);
 
 
                 /*
-                 * お便りを初期化
-                 */
-
+                * お便りを初期化
+                */
                 letters = [];
 
 
                 /*
-                 * =====================================================
-                 * A列 = 名前
-                 * B列 = コメント
-                 * =====================================================
-                 */
+                * =====================================================
+                * A列 = 名前
+                * B列 = コメント
+                * =====================================================
+                */
 
                 for (
                     let i = 0;
@@ -1030,9 +983,8 @@
 
 
                     /*
-                     * 完全な空行は無視
-                     */
-
+                    * 完全な空行は無視
+                    */
                     if (
                         name === "" &&
                         comment === ""
@@ -1044,9 +996,8 @@
 
 
                     /*
-                     * 1行目がヘッダーなら除外
-                     */
-
+                    * 1行目がヘッダーなら除外
+                    */
                     if (
                         i === 0 &&
                         (
@@ -1065,9 +1016,8 @@
 
 
                     /*
-                     * お便りとして追加
-                     */
-
+                    * お便りとして追加
+                    */
                     letters.push({
 
                         name: name,
@@ -1080,12 +1030,15 @@
 
 
                 /*
-                 * お便りが0件
-                 */
-
+                * お便りが0件
+                */
                 if (
                     letters.length === 0
                 ) {
+
+                    alert(
+                        `シート「${sheetName}」にお便りがありません。`
+                    );
 
                     status.textContent =
                         "お便りがありません";
@@ -1096,16 +1049,14 @@
 
 
                 /*
-                 * 現在位置をリセット
-                 */
-
+                * 現在位置をリセット
+                */
                 currentIndex = -1;
 
 
                 /*
-                 * 表示切り替え
-                 */
-
+                * 表示切り替え
+                */
                 message.style.display =
                     "none";
 
@@ -1116,36 +1067,35 @@
 
 
                 /*
-                 * 読み込み完了
-                 */
-
+                * 読み込み完了
+                */
                 status.textContent =
                     `${letters.length}件のお便りを読み込みました`;
 
 
                 /*
-                 * 最初のお便り
-                 */
-
+                * 最初のお便り
+                */
                 showNextLetter();
 
 
             }
             catch (error) {
 
-                console.error(
-                    error
-                );
+                console.error(error);
 
 
                 /*
-                 * シートが存在しない
-                 */
-
+                * シートが存在しない
+                */
                 if (
                     error.message ===
                     "SHEET_NOT_FOUND"
                 ) {
+
+                    alert(
+                        `シート「${sheetName}」が存在しません。`
+                    );
 
                     status.textContent =
                         `シート「${sheetName}」が存在しません`;
@@ -1156,8 +1106,11 @@
 
 
                 /*
-                 * その他のエラー
-                 */
+                * その他のエラー
+                */
+                alert(
+                    "お便りの読み込みに失敗しました。"
+                );
 
                 status.textContent =
                     "お便りの読み込みに失敗しました";
@@ -1165,8 +1118,6 @@
             }
 
         }
-
-
 
         /* =====================================================
            次のお便り
