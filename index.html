@@ -1068,7 +1068,7 @@
             try {
 
                 status.textContent =
-                    "お便りを読み込み中...";
+                    "シートを確認中...";
 
                 const spreadsheetId =
                     getSpreadsheetId(
@@ -1076,20 +1076,35 @@
                     );
 
                 /*
-                 * シート一覧をGoogle SheetsのHTMLから解析せず、
-                 * シート名を直接指定してCSVを取得します。
+                 * =====================================================
+                 * シート名を「range」として指定します。
+                 *
+                 * 前回の sheet= 方式では、Google側の挙動によって
+                 * 存在しないシート名でも別のシートが返ることがありました。
+                 *
+                 * range='シート名'!A:B とすることで、
+                 * 指定したシートそのものを問い合わせます。
+                 * =====================================================
                  */
-                const csvUrl =
-                    `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+
+                const escapedSheetName =
+                    sheetName.replace(/'/g, "''");
+
+                const range =
+                    `'${escapedSheetName}'!A:B`;
+
+                const url =
+                    `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?` +
+                    `tqx=out:json&headers=0&range=${encodeURIComponent(range)}`;
 
                 console.log(
-                    "CSV取得URL:",
-                    csvUrl
+                    "シート確認URL:",
+                    url
                 );
 
                 const response =
                     await fetch(
-                        csvUrl
+                        url
                     );
 
                 if (!response.ok) {
@@ -1100,15 +1115,24 @@
 
                 }
 
-                const csv =
+                const responseText =
                     await response.text();
 
                 /*
-                 * Google SheetsからHTMLなどが返ってきた場合
+                 * gvizのJSONPラッパーを取り除く
+                 *
+                 * google.visualization.Query.setResponse({...})
                  */
+
+                const jsonStart =
+                    responseText.indexOf("{");
+
+                const jsonEnd =
+                    responseText.lastIndexOf("}");
+
                 if (
-                    csv.trim().startsWith("<!DOCTYPE") ||
-                    csv.trim().startsWith("<html")
+                    jsonStart < 0 ||
+                    jsonEnd < jsonStart
                 ) {
 
                     throw new Error(
@@ -1117,47 +1141,94 @@
 
                 }
 
-                if (
-                    !csv.trim()
-                ) {
+                let data;
 
-                    alert(
-                        `シート「${sheetName}」にお便りがありません。`
+                try {
+
+                    data = JSON.parse(
+                        responseText.slice(
+                            jsonStart,
+                            jsonEnd + 1
+                        )
                     );
 
-                    status.textContent =
-                        "お便りがありません";
+                }
+                catch (parseError) {
 
-                    return;
+                    console.error(
+                        "Google Sheets JSON解析エラー:",
+                        parseError,
+                        responseText
+                    );
+
+                    throw new Error(
+                        "SHEET_LOAD_ERROR"
+                    );
 
                 }
 
-                const rows =
-                    parseCSV(
-                        csv
+                /*
+                 * =====================================================
+                 * ここが重要
+                 *
+                 * 指定したシートが存在しない場合、gvizは
+                 * status="error" を返すため、ここで確実に停止します。
+                 * =====================================================
+                 */
+
+                if (
+                    data.status !== "ok"
+                ) {
+
+                    console.error(
+                        "Google Sheetsエラー:",
+                        data
                     );
+
+                    const error =
+                        new Error(
+                            "SHEET_NOT_FOUND"
+                        );
+
+                    throw error;
+
+                }
+
+                const table =
+                    data.table || {};
+
+                const rows =
+                    table.rows || [];
 
                 letters = [];
 
                 /*
+                 * =====================================================
                  * A列 = 名前
                  * B列 = コメント
+                 * =====================================================
                  */
+
                 for (
                     let i = 0;
                     i < rows.length;
                     i++
                 ) {
 
-                    const row =
-                        rows[i];
+                    const cells =
+                        rows[i].c || [];
 
                     const name =
-                        row[0]?.trim() || "";
+                        cells[0]?.v != null
+                            ? String(cells[0].v).trim()
+                            : "";
 
                     const comment =
-                        row[1]?.trim() || "";
+                        cells[1]?.v != null
+                            ? String(cells[1].v).trim()
+                            : "";
 
+                    /* 完全な空行は無視 */
                     if (
                         name === "" &&
                         comment === ""
@@ -1168,7 +1239,7 @@
                     }
 
                     /*
-                     * 1行目が「名前,コメント」の場合はヘッダーとして除外
+                     * 1行目が「名前 / コメント」の場合はヘッダーとして除外
                      */
                     if (
                         i === 0 &&
@@ -1196,16 +1267,22 @@
 
                 }
 
+                /*
+                 * =====================================================
+                 * 指定したシートは存在するが、お便りが0件
+                 * =====================================================
+                 */
+
                 if (
                     letters.length === 0
                 ) {
 
                     alert(
-                        `シート「${sheetName}」にお便りがありません。`
+                        `シート「${sheetName}」は存在しますが、お便りがありません。`
                     );
 
                     status.textContent =
-                        "お便りがありません";
+                        `シート「${sheetName}」は存在しますが、お便りがありません`;
 
                     return;
 
@@ -1235,12 +1312,28 @@
 
                 if (
                     error.message ===
+                    "SHEET_NOT_FOUND"
+                ) {
+
+                    alert(
+                        `シート「${sheetName}」は存在しません。`
+                    );
+
+                    status.textContent =
+                        `シート「${sheetName}」は存在しません`;
+
+                    return;
+
+                }
+
+                if (
+                    error.message ===
                     "SHEET_LOAD_ERROR"
                 ) {
 
                     alert(
                         `シート「${sheetName}」を読み込めませんでした。\n\n` +
-                        "シート名とスプレッドシートの公開設定を確認してください。"
+                        "スプレッドシートの公開設定を確認してください。"
                     );
 
                     status.textContent =
