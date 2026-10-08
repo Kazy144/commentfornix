@@ -876,7 +876,7 @@
             try {
 
                 status.textContent =
-                    "読み込み中...";
+                    "シートを確認中...";
 
 
                 /*
@@ -889,8 +889,97 @@
 
 
                 /*
-                * シート名をURLエンコード
+                * =====================================================
+                * スプレッドシート本体を取得
+                * =====================================================
                 */
+
+                const spreadsheetUrl =
+                    `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
+
+                const spreadsheetResponse =
+                    await fetch(spreadsheetUrl);
+
+
+                if (!spreadsheetResponse.ok) {
+
+                    throw new Error(
+                        "SPREADSHEET_ACCESS_ERROR"
+                    );
+
+                }
+
+
+                const spreadsheetHtml =
+                    await spreadsheetResponse.text();
+
+
+                /*
+                * =====================================================
+                * シート名が本当に存在するか確認
+                *
+                * 「文字列が含まれているか」ではなく、
+                * シート名として登録されているものと比較する
+                * =====================================================
+                */
+
+                const escapedSheetName =
+                    sheetName
+                        .replace(/\\/g, "\\\\")
+                        .replace(/"/g, '\\"');
+
+
+                /*
+                * Google Sheets内部の
+                *
+                * "name":"シート名"
+                *
+                * または
+                *
+                * "title":"シート名"
+                *
+                * を検索
+                */
+
+                const sheetNamePattern =
+                    new RegExp(
+                        `"(?:(?:name)|(?:title))"\\s*:\\s*"${escapedSheetName}"`,
+                        "i"
+                    );
+
+
+                const sheetExists =
+                    sheetNamePattern.test(
+                        spreadsheetHtml
+                    );
+
+
+                /*
+                * =====================================================
+                * 存在しないシート
+                * =====================================================
+                */
+
+                if (!sheetExists) {
+
+                    alert(
+                        `シート「${sheetName}」が存在しません。`
+                    );
+
+                    status.textContent =
+                        `シート「${sheetName}」が存在しません`;
+
+                    return;
+
+                }
+
+
+                /*
+                * =====================================================
+                * シート名をURLエンコード
+                * =====================================================
+                */
+
                 const encodedSheetName =
                     encodeURIComponent(
                         sheetName
@@ -898,10 +987,15 @@
 
 
                 /*
+                * =====================================================
                 * CSV取得
-                *
-                * 指定したシートを直接取得する
+                * =====================================================
                 */
+
+                status.textContent =
+                    "お便りを読み込み中...";
+
+
                 const csvUrl =
                     `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:csv&sheet=${encodedSheetName}`;
 
@@ -913,7 +1007,7 @@
                 if (!response.ok) {
 
                     throw new Error(
-                        "SHEET_NOT_FOUND"
+                        "SHEET_LOAD_ERROR"
                     );
 
                 }
@@ -925,10 +1019,8 @@
 
                 /*
                 * Google Sheets側のエラー確認
-                *
-                * 存在しないシートの場合などに
-                * エラーが返ってきた場合は読み込まない
                 */
+
                 if (
                     csv.includes("#REF!") ||
                     csv.includes("#ERROR!") ||
@@ -938,15 +1030,18 @@
                 ) {
 
                     throw new Error(
-                        "SHEET_NOT_FOUND"
+                        "SHEET_LOAD_ERROR"
                     );
 
                 }
 
 
                 /*
+                * =====================================================
                 * CSV解析
+                * =====================================================
                 */
+
                 const rows =
                     parseCSV(csv);
 
@@ -954,6 +1049,7 @@
                 /*
                 * お便りを初期化
                 */
+
                 letters = [];
 
 
@@ -985,6 +1081,7 @@
                     /*
                     * 完全な空行は無視
                     */
+
                     if (
                         name === "" &&
                         comment === ""
@@ -998,6 +1095,7 @@
                     /*
                     * 1行目がヘッダーなら除外
                     */
+
                     if (
                         i === 0 &&
                         (
@@ -1018,6 +1116,7 @@
                     /*
                     * お便りとして追加
                     */
+
                     letters.push({
 
                         name: name,
@@ -1030,8 +1129,11 @@
 
 
                 /*
+                * =====================================================
                 * お便りが0件
+                * =====================================================
                 */
+
                 if (
                     letters.length === 0
                 ) {
@@ -1051,12 +1153,14 @@
                 /*
                 * 現在位置をリセット
                 */
+
                 currentIndex = -1;
 
 
                 /*
                 * 表示切り替え
                 */
+
                 message.style.display =
                     "none";
 
@@ -1069,6 +1173,7 @@
                 /*
                 * 読み込み完了
                 */
+
                 status.textContent =
                     `${letters.length}件のお便りを読み込みました`;
 
@@ -1076,6 +1181,7 @@
                 /*
                 * 最初のお便り
                 */
+
                 showNextLetter();
 
 
@@ -1086,19 +1192,42 @@
 
 
                 /*
-                * シートが存在しない
+                * スプレッドシート自体に
+                * アクセスできない場合
                 */
+
                 if (
                     error.message ===
-                    "SHEET_NOT_FOUND"
+                    "SPREADSHEET_ACCESS_ERROR"
                 ) {
 
                     alert(
-                        `シート「${sheetName}」が存在しません。`
+                        "Googleスプレッドシートにアクセスできません。"
                     );
 
                     status.textContent =
-                        `シート「${sheetName}」が存在しません`;
+                        "スプレッドシートにアクセスできません";
+
+                    return;
+
+                }
+
+
+                /*
+                * シートの読み込みエラー
+                */
+
+                if (
+                    error.message ===
+                    "SHEET_LOAD_ERROR"
+                ) {
+
+                    alert(
+                        `シート「${sheetName}」を読み込めませんでした。`
+                    );
+
+                    status.textContent =
+                        `シート「${sheetName}」を読み込めませんでした`;
 
                     return;
 
@@ -1108,6 +1237,7 @@
                 /*
                 * その他のエラー
                 */
+
                 alert(
                     "お便りの読み込みに失敗しました。"
                 );
@@ -1118,6 +1248,7 @@
             }
 
         }
+
 
         /* =====================================================
            次のお便り
