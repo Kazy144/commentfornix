@@ -1,0 +1,1846 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>ラジオお便り表示</title>
+
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+
+        /* =========================================
+           ページ全体
+           ========================================= */
+
+        body {
+
+            margin: 0;
+
+            width: 100vw;
+            height: 100vh;
+
+            font-family:
+                "Noto Sans JP",
+                "Yu Gothic",
+                "Meiryo",
+                sans-serif;
+
+            /*
+             * OBSのクロマキー用背景
+             */
+            background: #00ff00;
+
+            color: white;
+
+            overflow: hidden;
+        }
+
+
+        /* =========================================
+           お便り表示画面
+           ========================================= */
+
+        .screen {
+
+            width: 100%;
+            height: 100%;
+
+            display: flex;
+
+            align-items: center;
+            justify-content: center;
+
+            padding: 40px;
+        }
+
+
+        /* =========================================
+           お便り枠
+           ========================================= */
+
+        .letter {
+            width: min(1100px, 90vw);
+            max-width: 1100px;
+
+            /* 高さはJSで決める */
+            height: auto;
+            max-height: calc(100vh - 80px);
+
+            box-sizing: border-box;
+
+            background: rgba(255, 255, 255, 0.96);
+            color: #222;
+
+            border-radius: 30px;
+            padding: 45px 55px;
+
+            box-shadow: 0 20px 60px rgba(0,0,0,.35);
+
+            display: none;
+            flex-direction: column;
+
+            overflow: hidden;
+
+            animation: showLetter .35s ease;
+        }
+
+        .letter.show {
+            display: flex;
+        }
+
+
+        @keyframes showLetter {
+
+            from {
+
+                opacity: 0;
+
+                transform:
+                    scale(0.96)
+                    translateY(10px);
+            }
+
+            to {
+
+                opacity: 1;
+
+                transform:
+                    scale(1)
+                    translateY(0);
+            }
+        }
+
+
+        /* ヘッダー */
+        .header {
+            display: flex;
+            align-items: center;
+
+            width: 100%;
+
+            flex-shrink: 0;
+
+            min-width: 0;
+        }
+
+
+        /* アイコン */
+        .header img {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            flex-shrink: 0;
+
+            object-fit: cover;
+        }
+
+        .header > div {
+            min-width: 0;
+            flex: 1 1 auto;
+            width: 0;
+        }
+
+        /* 名前 */
+        .name {
+            min-width: 0;
+            width: 100%;
+            max-width: 100%;
+
+            margin-left: 0;
+
+            font-size: 28px;
+            font-weight: bold;
+
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+
+        .label {
+
+            font-size: 15px;
+
+            color: #888;
+
+            margin-bottom: 5px;
+        }
+
+
+        /* コメント */
+        .comment {
+            width: 100%;
+            box-sizing: border-box;
+
+            margin-top: 30px;
+
+            font-size: 32px;
+            line-height: 1.7;
+
+            white-space: pre-wrap;
+            word-break: break-word;
+
+            overflow: hidden;
+
+            flex-shrink: 0;
+        }
+
+
+        /* =========================================
+           メッセージ
+           ========================================= */
+
+        .message {
+
+            text-align: center;
+
+            color:
+                rgba(0, 0, 0, 0.7);
+
+            font-size: 28px;
+        }
+
+
+        /* =========================================
+           操作パネル
+           ========================================= */
+
+        .control-panel {
+
+            position: fixed;
+
+            left: 20px;
+            bottom: 20px;
+
+            width: 340px;
+
+            padding: 20px;
+
+            background:
+                rgba(0, 0, 0, 0.85);
+
+            border-radius: 15px;
+
+            box-shadow:
+                0 10px 30px
+                rgba(0, 0, 0, 0.4);
+
+            z-index: 1000;
+
+            transition:
+                opacity 0.2s;
+        }
+
+
+        .control-panel.hidden {
+
+            opacity: 0;
+
+            pointer-events: none;
+        }
+
+
+        .control-panel h2 {
+
+            margin:
+                0 0 15px 0;
+
+            font-size: 20px;
+        }
+
+
+        .control-panel label {
+
+            display: block;
+
+            margin-bottom: 6px;
+
+            font-size: 14px;
+        }
+
+
+        .control-panel input {
+
+            width: 100%;
+
+            padding: 10px 12px;
+
+            margin-bottom: 12px;
+
+            border: none;
+
+            border-radius: 8px;
+
+            font-size: 16px;
+        }
+
+
+        /* =========================================
+           ボタン
+           ========================================= */
+
+        button {
+
+            width: 100%;
+
+            padding: 12px;
+
+            border: none;
+
+            border-radius: 8px;
+
+            background: #2563eb;
+
+            color: white;
+
+            font-size: 16px;
+
+            font-weight: bold;
+
+            cursor: pointer;
+        }
+
+
+        button:hover {
+
+            background: #1d4ed8;
+        }
+
+
+        /* =========================================
+           前へ・次へ
+           ========================================= */
+
+        .navigation {
+
+            display: flex;
+
+            gap: 8px;
+
+            margin-top: 8px;
+        }
+
+
+        .navigation button {
+
+            width: 50%;
+        }
+
+
+        /* =========================================
+           ステータス
+           ========================================= */
+
+        .status {
+
+            margin-top: 12px;
+
+            font-size: 13px;
+
+            color: #ccc;
+
+            min-height: 20px;
+
+            line-height: 1.5;
+        }
+
+
+        /* =========================================
+           操作説明
+           ========================================= */
+
+        .hint {
+
+            margin-top: 12px;
+
+            font-size: 12px;
+
+            color: #aaa;
+
+            line-height: 1.6;
+        }
+
+    </style>
+
+
+    <!-- Google SheetsのExcelデータ解析用 -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+</head>
+
+
+<body>
+
+
+    <!-- =========================================
+         お便り表示
+         ========================================= -->
+
+    <div class="screen">
+
+
+        <!-- 初期メッセージ -->
+
+        <div
+            id="message"
+            class="message"
+        >
+
+            シート名を入力して
+            「お便りを読み込む」を押してください
+
+        </div>
+
+
+        <!-- お便り -->
+
+        <div
+            id="letter"
+            class="letter"
+        >
+
+
+            <!-- 名前 -->
+
+            <div class="header">
+
+
+                <!-- アイコン -->
+
+                <img
+                    id="icon"
+                    class="icon"
+                    src=""
+                    alt="アイコン"
+                >
+
+
+                <div>
+
+                    <div class="label">
+                        ラジオネーム
+                    </div>
+
+
+                    <div
+                        id="name"
+                        class="name"
+                    >
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- コメント -->
+
+            <div
+                id="comment"
+                class="comment"
+            >
+            </div>
+
+
+        </div>
+
+    </div>
+
+
+
+    <!-- =========================================
+         操作パネル
+         ========================================= -->
+
+    <div
+        id="controlPanel"
+        class="control-panel"
+    >
+
+
+        <h2>
+            ラジオお便り操作
+        </h2>
+
+
+        <!-- シート名 -->
+
+        <label for="sheetName">
+
+            シート名
+
+        </label>
+
+
+        <input
+            id="sheetName"
+            type="text"
+            placeholder="例：お便り"
+        >
+
+
+        <!-- 読み込み -->
+
+        <button id="loadButton">
+
+            お便りを読み込む
+
+        </button>
+
+
+        <!-- 前へ・次へ -->
+
+        <div class="navigation">
+
+
+            <button id="previousButton">
+
+                ← 前のお便り
+
+            </button>
+
+
+            <button id="nextButton">
+
+                次のお便り →
+
+            </button>
+
+
+        </div>
+
+
+        <!-- ステータス -->
+
+        <div
+            id="status"
+            class="status"
+        >
+        </div>
+
+
+        <!-- 操作説明 -->
+
+        <div class="hint">
+
+            Space：次のお便り<br>
+
+            ←：前のお便り<br>
+
+            →：次のお便り<br>
+
+            H：操作パネル表示 / 非表示
+
+        </div>
+
+
+    </div>
+
+
+
+    <script>
+
+
+        /* =====================================================
+           Google Sheets設定
+           ===================================================== */
+
+
+        /*
+         * Google SheetsのURLは固定
+         */
+
+        const SHEET_URL =
+            "https://docs.google.com/spreadsheets/d/1oDB_-kaK9ltjHbQ1zHvB-Q8bYZoEzbnSMkKZgUo5H4o/edit";
+
+
+
+        /* =====================================================
+           アイコン
+           ===================================================== */
+
+        const ICONS = [
+
+            "icons/icon1.png",
+
+            "icons/icon2.png",
+
+            "icons/icon3.png",
+
+            "icons/icon4.png",
+
+            "icons/icon5.png"
+
+        ];
+
+
+
+        /* =====================================================
+           お便りデータ
+           ===================================================== */
+
+        let letters = [];
+
+
+        /*
+         * 現在表示しているお便り
+         *
+         * -1 = まだ表示していない
+         */
+
+        let currentIndex = -1;
+
+
+
+        /* =====================================================
+           HTML要素
+           ===================================================== */
+
+        const sheetNameInput =
+            document.getElementById(
+                "sheetName"
+            );
+
+
+        const loadButton =
+            document.getElementById(
+                "loadButton"
+            );
+
+
+        const previousButton =
+            document.getElementById(
+                "previousButton"
+            );
+
+
+        const nextButton =
+            document.getElementById(
+                "nextButton"
+            );
+
+
+        const status =
+            document.getElementById(
+                "status"
+            );
+
+
+        const message =
+            document.getElementById(
+                "message"
+            );
+
+
+        const letter =
+            document.getElementById(
+                "letter"
+            );
+
+
+        const nameElement =
+            document.getElementById(
+                "name"
+            );
+
+
+        const commentElement =
+            document.getElementById(
+                "comment"
+            );
+
+
+        const iconElement =
+            document.getElementById(
+                "icon"
+            );
+
+
+        const controlPanel =
+            document.getElementById(
+                "controlPanel"
+            );
+
+
+
+        /* =====================================================
+           Spreadsheet ID取得
+           ===================================================== */
+
+        function getSpreadsheetId(url) {
+
+
+            const match =
+                url.match(
+                    /\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/
+                );
+
+
+            if (!match) {
+
+                throw new Error(
+                    "Google Sheets URLが正しくありません"
+                );
+
+            }
+
+
+            return match[1];
+
+        }
+
+
+
+        /* =====================================================
+           CSV解析
+           ===================================================== */
+
+        function parseCSV(text) {
+
+
+            const rows = [];
+
+            let row = [];
+
+            let value = "";
+
+            let insideQuotes = false;
+
+
+            for (
+                let i = 0;
+                i < text.length;
+                i++
+            ) {
+
+
+                const char =
+                    text[i];
+
+
+                const next =
+                    text[i + 1];
+
+
+                /*
+                 * ダブルクォート
+                 */
+
+                if (char === '"') {
+
+
+                    if (
+                        insideQuotes &&
+                        next === '"'
+                    ) {
+
+                        value += '"';
+
+                        i++;
+
+                    }
+                    else {
+
+                        insideQuotes =
+                            !insideQuotes;
+
+                    }
+
+
+                    continue;
+
+                }
+
+
+
+                /*
+                 * カンマ
+                 */
+
+                if (
+                    char === "," &&
+                    !insideQuotes
+                ) {
+
+                    row.push(value);
+
+                    value = "";
+
+                    continue;
+
+                }
+
+
+
+                /*
+                 * 改行
+                 */
+
+                if (
+                    (
+                        char === "\n" ||
+                        char === "\r"
+                    ) &&
+                    !insideQuotes
+                ) {
+
+
+                    /*
+                     * CRLF
+                     */
+
+                    if (
+                        char === "\r" &&
+                        next === "\n"
+                    ) {
+
+                        i++;
+
+                    }
+
+
+                    row.push(value);
+
+                    rows.push(row);
+
+                    row = [];
+
+                    value = "";
+
+                    continue;
+
+                }
+
+
+                value += char;
+
+            }
+
+
+
+            /*
+             * 最後の行
+             */
+
+            if (
+                value !== "" ||
+                row.length > 0
+            ) {
+
+                row.push(value);
+
+                rows.push(row);
+
+            }
+
+
+            return rows;
+
+        }
+
+
+        /* =====================================================
+        Google Sheetsからシート一覧を取得
+        ===================================================== */
+
+        async function loadSheet() {
+
+            /* =====================================================
+               入力されたシート名
+               ===================================================== */
+
+            const sheetName =
+                sheetNameInput.value.trim();
+
+
+            if (!sheetName) {
+
+                alert(
+                    "シート名を入力してください"
+                );
+
+                status.textContent =
+                    "シート名を入力してください";
+
+                return;
+
+            }
+
+
+            /* =====================================================
+               読み込み開始時に前回のお便りを消す
+               ===================================================== */
+
+            letters = [];
+
+            currentIndex = -1;
+
+            letter.classList.remove("show");
+
+            message.style.display = "block";
+
+            message.textContent =
+                "シートを確認しています...";
+
+            status.textContent =
+                "シート一覧を確認中...";
+
+
+            loadButton.disabled = true;
+
+
+            try {
+
+                /* =====================================================
+                   Spreadsheet ID
+                   ===================================================== */
+
+                const spreadsheetId =
+                    getSpreadsheetId(
+                        SHEET_URL
+                    );
+
+
+                /* =====================================================
+                   Google Sheets全体をXLSXとして取得
+
+                   ここでは「入力されたシート名」に直接
+                   問い合わせません。
+
+                   まずスプレッドシート全体を取得し、
+                   実際に存在するシート一覧を取得します。
+                   ===================================================== */
+
+                const xlsxUrl =
+                    `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=xlsx`;
+
+
+                const response =
+                    await fetch(
+                        xlsxUrl,
+                        {
+                            method: "GET",
+                            cache: "no-store"
+                        }
+                    );
+
+
+                if (!response.ok) {
+
+                    throw new Error(
+                        "SPREADSHEET_ACCESS_ERROR"
+                    );
+
+                }
+
+
+                const arrayBuffer =
+                    await response.arrayBuffer();
+
+
+                if (
+                    !arrayBuffer ||
+                    arrayBuffer.byteLength === 0
+                ) {
+
+                    throw new Error(
+                        "EMPTY_SPREADSHEET_FILE"
+                    );
+
+                }
+
+
+                /* =====================================================
+                   XLSXを解析
+                   ===================================================== */
+
+                if (
+                    typeof XLSX === "undefined"
+                ) {
+
+                    throw new Error(
+                        "XLSX_LIBRARY_ERROR"
+                    );
+
+                }
+
+
+                const workbook =
+                    XLSX.read(
+                        arrayBuffer,
+                        {
+                            type: "array"
+                        }
+                    );
+
+
+                /* =====================================================
+                   実在するシート名一覧
+                   ===================================================== */
+
+                const sheetNames =
+                    Array.isArray(
+                        workbook.SheetNames
+                    )
+                        ? workbook.SheetNames
+                        : [];
+
+
+                console.log(
+                    "実際に存在するシート:",
+                    sheetNames
+                );
+
+
+                if (
+                    sheetNames.length === 0
+                ) {
+
+                    throw new Error(
+                        "SHEET_LIST_ERROR"
+                    );
+
+                }
+
+
+                /* =====================================================
+                   シート名を完全一致で検索
+
+                   大文字・小文字も区別します。
+                   ===================================================== */
+
+                const targetSheetName =
+                    sheetNames.find(
+                        name =>
+                            name === sheetName
+                    );
+
+
+                /* =====================================================
+                   存在しないシート
+
+                   ここで必ず終了します。
+                   別のシートを読み込むことはありません。
+                   ===================================================== */
+
+                if (!targetSheetName) {
+
+                    message.style.display = "block";
+
+                    message.textContent =
+                        `シート「${sheetName}」は存在しません`;
+
+                    letter.classList.remove("show");
+
+                    status.textContent =
+                        `エラー：シート「${sheetName}」は存在しません`;
+
+                    alert(
+                        `シート「${sheetName}」は存在しません。`
+                    );
+
+                    return;
+
+                }
+
+
+                console.log(
+                    "読み込むシート:",
+                    targetSheetName
+                );
+
+
+                status.textContent =
+                    `シート「${targetSheetName}」を読み込み中...`;
+
+
+                /* =====================================================
+                   対象シートを取得
+                   ===================================================== */
+
+                const worksheet =
+                    workbook.Sheets[
+                        targetSheetName
+                    ];
+
+
+                if (!worksheet) {
+
+                    throw new Error(
+                        "SHEET_DATA_ERROR"
+                    );
+
+                }
+
+
+                /* =====================================================
+                   A列・B列を2次元配列として取得
+
+                   A列 = 名前
+                   B列 = コメント
+                   ===================================================== */
+
+                const rows =
+                    XLSX.utils.sheet_to_json(
+                        worksheet,
+                        {
+                            header: 1,
+                            raw: false,
+                            defval: "",
+                            blankrows: false
+                        }
+                    );
+
+
+                /* =====================================================
+                   お便りデータを作成
+                   ===================================================== */
+
+                letters = [];
+
+
+                for (
+                    let i = 0;
+                    i < rows.length;
+                    i++
+                ) {
+
+                    const row =
+                        rows[i] || [];
+
+
+                    const name =
+                        String(
+                            row[0] ?? ""
+                        ).trim();
+
+
+                    const comment =
+                        String(
+                            row[1] ?? ""
+                        ).trim();
+
+
+                    /*
+                     * 完全な空行は無視
+                     */
+
+                    if (
+                        name === "" &&
+                        comment === ""
+                    ) {
+
+                        continue;
+
+                    }
+
+
+                    /*
+                     * 1行目がヘッダーなら除外
+                     */
+
+                    if (
+                        i === 0 &&
+                        (
+                            name === "名前" ||
+                            name.toLowerCase() === "name"
+                        ) &&
+                        (
+                            comment === "コメント" ||
+                            comment.toLowerCase() === "comment"
+                        )
+                    ) {
+
+                        continue;
+
+                    }
+
+
+                    /*
+                     * お便りとして追加
+                     */
+
+                    letters.push({
+
+                        name: name,
+
+                        comment: comment
+
+                    });
+
+                }
+
+
+                /* =====================================================
+                   お便りが0件
+                   ===================================================== */
+
+                if (
+                    letters.length === 0
+                ) {
+
+                    message.style.display = "block";
+
+                    message.textContent =
+                        `シート「${sheetName}」にお便りがありません`;
+
+                    letter.classList.remove("show");
+
+                    status.textContent =
+                        "シートは存在しますが、お便りがありません";
+
+                    alert(
+                        `シート「${sheetName}」にお便りがありません。`
+                    );
+
+                    return;
+
+                }
+
+
+                /* =====================================================
+                   現在位置をリセット
+                   ===================================================== */
+
+                currentIndex = -1;
+
+
+                /* =====================================================
+                   表示切り替え
+                   ===================================================== */
+
+                message.style.display =
+                    "none";
+
+                letter.classList.add(
+                    "show"
+                );
+
+
+                /* =====================================================
+                   読み込み完了
+                   ===================================================== */
+
+                status.textContent =
+                    `${letters.length}件のお便りを読み込みました`;
+
+
+                /* =====================================================
+                   最初のお便り
+                   ===================================================== */
+
+                showNextLetter();
+
+
+            }
+            catch (error) {
+
+                console.error(
+                    error
+                );
+
+
+                /*
+                 * エラー発生時は、以前に読み込んだ
+                 * お便りを残さない
+                 */
+
+                letters = [];
+
+                currentIndex = -1;
+
+                letter.classList.remove("show");
+
+                message.style.display = "block";
+
+
+                if (
+                    error.message ===
+                    "SPREADSHEET_ACCESS_ERROR"
+                ) {
+
+                    message.textContent =
+                        "スプレッドシートを読み込めませんでした";
+
+                    status.textContent =
+                        "スプレッドシートへのアクセスに失敗しました";
+
+                    alert(
+                        "スプレッドシートを読み込めませんでした。公開設定やURLを確認してください。"
+                    );
+
+                }
+                else if (
+                    error.message ===
+                    "XLSX_LIBRARY_ERROR"
+                ) {
+
+                    message.textContent =
+                        "Excel解析ライブラリを読み込めませんでした";
+
+                    status.textContent =
+                        "XLSXライブラリの読み込みに失敗しました";
+
+                    alert(
+                        "Excel解析ライブラリを読み込めませんでした。インターネット接続を確認してください。"
+                    );
+
+                }
+                else if (
+                    error.message ===
+                    "SHEET_LIST_ERROR"
+                ) {
+
+                    message.textContent =
+                        "シート一覧を取得できませんでした";
+
+                    status.textContent =
+                        "シート一覧の取得に失敗しました";
+
+                    alert(
+                        "シート一覧を取得できませんでした。スプレッドシートの公開設定を確認してください。"
+                    );
+
+                }
+                else if (
+                    error.message ===
+                    "SHEET_DATA_ERROR"
+                ) {
+
+                    message.textContent =
+                        "シートのデータを読み込めませんでした";
+
+                    status.textContent =
+                        "シートデータの取得に失敗しました";
+
+                    alert(
+                        "対象シートのデータを読み込めませんでした。"
+                    );
+
+                }
+                else {
+
+                    message.textContent =
+                        "お便りを読み込めませんでした";
+
+                    status.textContent =
+                        "読み込み中にエラーが発生しました";
+
+                    alert(
+                        "お便りの読み込み中にエラーが発生しました。詳細はブラウザのコンソールを確認してください。"
+                    );
+
+                }
+
+            }
+            finally {
+
+                loadButton.disabled = false;
+
+            }
+
+        }
+
+
+        
+        /* =====================================================
+           長いコメントを画面内に収める
+           ===================================================== */
+        function fitCommentToLetter() {
+            if (!letter || !commentElement) return;
+
+            const fullText =
+                commentElement.dataset.fullText || "";
+
+            // まず全文を表示
+            commentElement.textContent = fullText;
+
+            // 実際の枠のpaddingを取得
+            const letterStyle =
+                window.getComputedStyle(letter);
+
+            const paddingTop =
+                parseFloat(letterStyle.paddingTop) || 0;
+
+            const paddingBottom =
+                parseFloat(letterStyle.paddingBottom) || 0;
+
+            // コメントのmargin
+            const commentStyle =
+                window.getComputedStyle(commentElement);
+
+            const commentMarginTop =
+                parseFloat(commentStyle.marginTop) || 0;
+
+            // screenのpadding
+            const screen =
+                document.querySelector(".screen");
+
+            const screenStyle =
+                screen
+                    ? window.getComputedStyle(screen)
+                    : null;
+
+            const screenPaddingTop =
+                screenStyle
+                    ? parseFloat(screenStyle.paddingTop) || 0
+                    : 0;
+
+            const screenPaddingBottom =
+                screenStyle
+                    ? parseFloat(screenStyle.paddingBottom) || 0
+                    : 0;
+
+            // 画面内で使える最大高さ
+            const maxLetterHeight =
+                Math.max(
+                    1,
+                    window.innerHeight -
+                    screenPaddingTop -
+                    screenPaddingBottom
+                );
+
+            // ヘッダーの実際の高さ
+            const header =
+                document.querySelector(".header");
+
+            const headerHeight =
+                header
+                    ? header.offsetHeight
+                    : 0;
+
+            // コメント全文の実際の高さ
+            const fullCommentHeight =
+                commentElement.scrollHeight;
+
+            // 全文を表示するために必要な枠の高さ
+            const requiredLetterHeight =
+                paddingTop +
+                headerHeight +
+                commentMarginTop +
+                fullCommentHeight +
+                paddingBottom;
+
+            // 短いコメントなら小さく、
+            // 長ければ画面いっぱいまで
+            const letterHeight =
+                Math.min(
+                    requiredLetterHeight,
+                    maxLetterHeight
+                );
+
+            letter.style.height =
+                Math.max(letterHeight, 1) + "px";
+
+            // コメントに使用できる高さ
+            const availableCommentHeight =
+                Math.max(
+                    0,
+                    letterHeight -
+                    paddingTop -
+                    headerHeight -
+                    commentMarginTop -
+                    paddingBottom
+                );
+
+            // 全文が入るならそのまま
+            if (
+                fullCommentHeight <=
+                availableCommentHeight
+            ) {
+                commentElement.textContent =
+                    fullText;
+
+                return;
+            }
+
+            // 入らない場合は
+            // 「…」を付けて入る文字数を探す
+            let low = 0;
+            let high = fullText.length;
+
+            while (low < high) {
+
+                const mid =
+                    Math.ceil(
+                        (low + high) / 2
+                    );
+
+                commentElement.textContent =
+                    fullText.slice(0, mid) + "…";
+
+                if (
+                    commentElement.scrollHeight <=
+                    availableCommentHeight
+                ) {
+                    low = mid;
+                } else {
+                    high = mid - 1;
+                }
+            }
+
+            commentElement.textContent =
+                fullText.slice(0, low) + "…";
+        }
+
+
+
+
+        /* =====================================================
+           次のお便り
+           ===================================================== */
+
+        function showNextLetter() {
+
+            if (
+                letters.length === 0
+            ) {
+                return;
+            }
+
+            /*
+             * 最後のお便り
+             */
+
+            if (
+                currentIndex >=
+                letters.length - 1
+            ) {
+
+                status.textContent =
+                    "これが最後のお便りです";
+
+                return;
+            }
+
+            /*
+             * 次へ
+             */
+
+            currentIndex++;
+
+            showCurrentLetter();
+
+        }
+
+
+
+        /* =====================================================
+           前のお便り
+           ===================================================== */
+
+        function showPreviousLetter() {
+
+            if (
+                letters.length === 0
+            ) {
+                return;
+            }
+
+            /*
+             * 最初のお便り
+             */
+
+            if (
+                currentIndex <= 0
+            ) {
+
+                status.textContent =
+                    "これが最初のお便りです";
+
+                return;
+            }
+
+            /*
+             * 前へ
+             */
+
+            currentIndex--;
+
+            showCurrentLetter();
+
+        }
+
+
+
+        /* =====================================================
+           現在のお便りを表示
+           ===================================================== */
+
+        function showCurrentLetter() {
+
+
+            const current =
+                letters[currentIndex];
+
+
+            /*
+             * 名前
+             */
+
+            nameElement.textContent =
+                current.name;
+
+
+            /*
+             * コメント
+             *
+             * 元の全文を保存
+             */
+
+            commentElement.dataset.fullText =
+                current.comment;
+
+
+            commentElement.textContent =
+                current.comment;
+
+
+            /*
+             * アイコン
+             *
+             * 毎回ランダム
+             */
+
+            setRandomIcon();
+
+
+            /*
+             * アニメーション
+             */
+
+            letter.classList.remove(
+                "show"
+            );
+
+
+            void letter.offsetWidth;
+
+
+            letter.classList.add(
+                "show"
+            );
+
+
+            /*
+             * アニメーション後に
+             * コメントの高さを計算
+             */
+
+            requestAnimationFrame(
+                function() {
+
+                    fitCommentToLetter();
+
+                }
+            );
+
+
+            /*
+             * 現在位置
+             */
+
+            status.textContent =
+                `${currentIndex + 1} / ${letters.length}`;
+
+        }
+
+
+
+        /* =====================================================
+           ランダムアイコン
+           ===================================================== */
+
+        function setRandomIcon() {
+
+
+            const randomIndex =
+                Math.floor(
+                    Math.random() *
+                    ICONS.length
+                );
+
+
+            const imagePath =
+                ICONS[randomIndex];
+
+
+            iconElement.style.display =
+                "block";
+
+
+            iconElement.src =
+                imagePath;
+
+
+            /*
+             * 画像がない場合
+             */
+
+            iconElement.onerror =
+                function() {
+
+                    iconElement.style.display =
+                        "none";
+
+                    iconElement.onerror =
+                        null;
+
+                };
+
+        }
+
+
+
+        /* =====================================================
+           ボタン
+           ===================================================== */
+
+        loadButton.addEventListener(
+            "click",
+            loadSheet
+        );
+
+
+        nextButton.addEventListener(
+            "click",
+            showNextLetter
+        );
+
+
+        previousButton.addEventListener(
+            "click",
+            showPreviousLetter
+        );
+
+
+
+        /* =====================================================
+           キーボード操作
+           ===================================================== */
+
+        document.addEventListener(
+            "keydown",
+            function(event) {
+
+
+                /*
+                 * 入力欄を操作中なら無視
+                 */
+
+                if (
+                    document.activeElement.tagName ===
+                    "INPUT"
+                ) {
+
+                    return;
+
+                }
+
+
+                /*
+                 * Space
+                 *
+                 * 次のお便り
+                 */
+
+                if (
+                    event.code === "Space"
+                ) {
+
+                    event.preventDefault();
+
+                    showNextLetter();
+
+                }
+
+
+                /*
+                 * →キー
+                 */
+
+                if (
+                    event.key === "ArrowRight"
+                ) {
+
+                    showNextLetter();
+
+                }
+
+
+                /*
+                 * ←キー
+                 */
+
+                if (
+                    event.key === "ArrowLeft"
+                ) {
+
+                    showPreviousLetter();
+
+                }
+
+
+                /*
+                 * Hキー
+                 *
+                 * 操作パネル表示/非表示
+                 */
+
+                if (
+                    event.key.toLowerCase() ===
+                    "h"
+                ) {
+
+                    controlPanel.classList.toggle(
+                        "hidden"
+                    );
+
+                }
+
+            }
+        );
+
+
+
+        /* =====================================================
+           OBSウィンドウのサイズ変更
+           ===================================================== */
+
+        window.addEventListener(
+            "resize",
+            function() {
+
+                if (
+                    currentIndex >= 0 &&
+                    letters.length > 0
+                ) {
+
+                    requestAnimationFrame(
+                        fitCommentToLetter
+                    );
+
+                }
+
+            }
+        );
+
+
+    </script>
+
+
+</body>
+
+</html>
